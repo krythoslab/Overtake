@@ -18,5 +18,10 @@ namespace Overtake.Simulation.Vehicle
         public float tireSlipRearRight;
         public float batterySoC_MJ;
         public uint rngState;
+        public ActiveAeroMode activeAeroMode;
+        public ERSMode ersMode;
+        public float fuelMass_kg;
+        public float activeAeroTransitionTimer_ms;
+        public bool activeAeroFailed;
     }
 }
