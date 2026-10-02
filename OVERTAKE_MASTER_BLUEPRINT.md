@@ -9,7 +9,7 @@
 
 ## Identity
 
-Overtake is a small, playable, technically interesting racing game built on cross-platform deterministic physics. Its signature features are **Active Aero** (Corner/Straight Line modes) and **ERS energy management** — the overtaking mechanics that define its name. Everything else serves those two systems and a clean, repeatable race loop.
+Overtake is a small, playable, technically interesting racing game built on deterministic simulation within Unity. Its signature features are **Active Aero** (Corner/Straight Line modes) and **ERS energy management** — the overtaking mechanics that define its name. Everything else serves those two systems and a clean, repeatable race loop.
 
 No real-world licensing, branding, or FIA regulatory fidelity is required for gameplay. Overtake uses a 2026-style regulations profile as a sensible default; fictional and custom regulation profiles must remain trivially possible.
 
@@ -45,7 +45,7 @@ Everything beyond those six systems is deferred. No new scope is introduced duri
 
 ## RegulationProfile
 
-A `RegulationProfile` is a data asset (JSON/YAML) loaded at session start. It drives the rules engine and provides default car parameters. Switching profiles requires no code change.
+A `RegulationProfile` is a data asset (ScriptableObject or JSON) loaded at session start. It drives the rules engine and provides default car parameters. Switching profiles requires no code change.
 
 ```yaml
 RegulationProfile:
@@ -130,7 +130,7 @@ VehicleSpec:
     tireThermalNodes: 1           # or 3
 ```
 
-`VehicleSpec` overrides `RegulationProfile` defaults where defined. `IVehicle::Update` reads no hard-coded constants.
+`VehicleSpec` overrides `RegulationProfile` defaults where defined. `IVehicle.Update` reads no hard-coded constants.
 
 ---
 
@@ -138,10 +138,10 @@ VehicleSpec:
 
 Every frame: `S(t) = f(S(t-1), I(t), seed)` — a pure function.
 
-- Fixed 1000Hz timestep. Presentation interpolates.
+- Fixed-timestep simulation. Unity's `FixedUpdate` is the natural candidate; validate exact frequency (e.g. 100 Hz, 200 Hz, 1000 Hz) as a hypothesis in M0. Presentation interpolates.
 - No uninitialized memory, no race conditions, no platform-dependent FP behaviour (no FTZ/DAZ, no fused-multiply-add unless explicitly disabled).
 - RNG state is part of `S`.
-- Linear arena allocator per tick. No heap allocation during the 1000Hz tick.
+- No heap allocation during the simulation tick.
 - Single-threaded simulation tick. Parallelism is permitted only in presentation, offline tools, and network receive.
 
 Cross-platform determinism gate: identical input sequence produces identical `VehicleState` within ±0.1% on all target platforms. This is a CI requirement before M1 gameplay development proceeds.
@@ -150,33 +150,32 @@ Cross-platform determinism gate: identical input sequence produces identical `Ve
 
 ## Simulation–Presentation Boundary
 
-```cpp
+```csharp
 // Simulation interface — presentation never touches internals.
-enum class ActiveAeroMode { Corner, StraightLine, Off, Failed };
-enum class ERSMode { Off, Low, Medium, High, Qualifying, Boost };
+public enum ActiveAeroMode { Corner, StraightLine, Off, Failed }
+public enum ERSMode { Off, Low, Medium, High, Qualifying, Boost }
 
-struct VehicleInput {
-    float steer, throttle, brake, clutch;
-    int gear;
-    ActiveAeroMode activeAero;
-    ERSMode ersMode;
-};
+public struct VehicleInput {
+    public float steer, throttle, brake, clutch;
+    public int gear;
+    public ActiveAeroMode activeAero;
+    public ERSMode ersMode;
+}
 
-struct VehicleState {
-    mat4x4 worldMatrix;
-    float speed, rpm, gear;
-    float tireSlip[4];
-    float batterySoC_MJ;
-};
+public struct VehicleState {
+    public Matrix4x4 worldMatrix;
+    public float speed, rpm, gear;
+    public float[] tireSlip;
+    public float batterySoC_MJ;
+}
 
-class IVehicle {
-public:
-    virtual void Update(float dt, const VehicleInput& in, const TrackSurface& track) = 0;
-    virtual const VehicleState& GetState() const = 0;
-};
+public interface IVehicle {
+    void Update(float dt, in VehicleInput input, TrackSurface track);
+    ref readonly VehicleState GetState();
+}
 ```
 
-Presentation subscribes to `VehicleState` via ring buffer. Audio receives telemetry events only. Neither may mutate simulation state.
+Presentation subscribes to `VehicleState` via Unity event or polling. Audio receives telemetry events only. Neither may mutate simulation state.
 
 ---
 
@@ -213,7 +212,7 @@ State machine: `Corner → StraightLine` on zone entry + driver toggle (or brake
 
 ## AI
 
-AI agents use the same `IVehicle::Update` interface. Difficulty is scaled by Gaussian noise on control inputs plus configurable reaction delay. AI selects ERS modes and activates Active Aero based on track context. Deterministic: same seed produces identical behaviour. No online learning.
+AI agents use the same `IVehicle.Update` interface. Difficulty is scaled by Gaussian noise on control inputs plus configurable reaction delay. AI selects ERS modes and activates Active Aero based on track context. Deterministic: same seed produces identical behaviour. No online learning.
 
 AI is deferred beyond a simple difficulty-scaled driver. Full attribute system, personality, engineer communication, and setup generation are not in the initial scope.
 
@@ -221,7 +220,7 @@ AI is deferred beyond a simple difficulty-scaled driver. Full attribute system, 
 
 ## Track Format
 
-Versioned binary format.
+Versioned binary format (Unity addressable assets or AssetBundles for streaming).
 
 - Spline geometry: centerline, width, banking, camber
 - Surface material IDs per segment
@@ -270,19 +269,19 @@ HUD is minimal by default, customizable. Shows speed, RPM, gear, lap time, posit
 
 ## Rendering
 
-Forward+ or deferred with tiled/clustered shading. Quality tiers are platform-configurable, not architecture choices:
+Unity render pipeline (URP or HDRP), selected per platform at build time. Scalable features: car LOD, track streaming, particle density, shadow resolution. Optimization techniques are implementation concerns, not blueprint requirements.
+
+Quality tiers are platform-configurable, not architecture choices:
 
 - Mobile: 1080p, MSAA/FXAA, no ray tracing, 30–60fps
 - Console: 1440p–4K checkerboard, 60–120fps, hardware ray tracing
 - PC: 4K native, 120fps, ray tracing, DLSS/FSR, optional VR
 
-Scalable features: car LOD (5 levels), track streaming, particle density, shadow resolution. Optimization techniques are implementation concerns, not blueprint requirements.
-
 ---
 
 ## Audio
 
-Engine sound synthesis from RPM/load (mobile) or multi-layer samples + convolution (PC/console). Tire squeal (slip-angle dependent), wind noise, aerodynamic transitions, collision audio, environment. Team radio: voice lines with optional subtitles. Audio is driven by simulation telemetry only; no feedback into simulation.
+Unity Audio. Engine sound synthesis from RPM/load (mobile) or multi-layer samples + convolution (PC/console). Tire squeal (slip-angle dependent), wind noise, aerodynamic transitions, collision audio, environment. Team radio: voice lines with optional subtitles. Audio is driven by simulation telemetry only; no feedback into simulation.
 
 ---
 
@@ -306,29 +305,52 @@ CI: every PR runs full test suite. Cross-platform determinism gate runs on x86/A
 
 ---
 
+## M0 Validation Spike
+
+Minimal technical spike to validate Unity feasibility before M1:
+
+- Unity version/build reproducibility
+- Fixed-timestep simulation frequency and stability
+- Deterministic/repeatable vehicle state (1 car, straight line, no collisions)
+- VehicleSpec / RegulationProfile loading via ScriptableObject or JSON
+- C# simulation performance against target tick budget
+- Unity ↔ simulation boundary: MonoBehaviour → IVehicle → Unity event
+
+Success criteria:
+- Vehicle state repeats across N runs with identical input and seed within ±0.1%.
+- Tick time in C# is within the selected fixed-timestep budget with headroom for AI and rules.
+- No heap allocations during the simulation tick (validated with profiler).
+
+Only introduce a native C++ plugin if measured profiling establishes that C# cannot meet the required budget.
+
+---
+
 ## Module Architecture
 
 ```
 overtake/
-  core/        Math, memory, logging, containers, SIMD
-  sim/         Physics, rules, AI, track data, replay
-    aero/      Active aero states, transitions, zone logic
-    ers/       ERS modes, harvest, Overtake Mode, deployment curves
-    pu/        Power unit: data-driven from RegulationProfile/VehicleSpec
-    tires/     Tire model and surface state
-  render/      Renderer, materials, shaders
-  audio/       Audio engine, synthesis, spatialization
-  input/       Input abstraction, device detection
-  ui/          UI framework, layouts, themes
-  net/         Networking, matchmaking, lobby
-  career/      Career mode, progression, save I/O
-  tools/       Editor, asset pipeline, CLI
-  platforms/   Platform shims (mobile, pc, console)
+  Assets/
+    Runtime/
+      Simulation/        Pure C# simulation kernel
+        Vehicle/         VehicleSpec, physics, ERS, Active Aero
+        Tires/           Tire model and surface state
+        Rules/           Rules engine, flags, penalties
+        AI/              Difficulty-scaled driver
+        Track/           Track data structures
+        Replay/          Deterministic input recorder
+      Presentation/      Unity integration layer
+        Rendering/       Car/track visuals
+        Audio/           Unity Audio integration
+        UI/              HUD, menus
+        Input/           Unity Input System wrappers
+    Data/                RegulationProfile, VehicleSpec assets
+  Python/                Offline tools, telemetry, balancing, CI
+  Packages/              Unity package manifest
 ```
 
-Dependency direction: `core` ← `sim` ← `career` / `net`. `render` and `audio` depend on `core` and `sim` via telemetry/event interfaces only.
+Dependency direction: `Simulation` has zero Unity API dependencies. `Presentation` depends on `Simulation` via interfaces only.
 
-C++20 for runtime. CMake with presets per platform. C#/Python for tools only.
+C# for runtime. Python for offline tooling. C++ optional native plugin only if profiling demonstrates a genuine performance requirement.
 
 ---
 
@@ -352,21 +374,21 @@ C++20 for runtime. CMake with presets per platform. C#/Python for tools only.
 
 ## What Was Removed, Deferred, and Simplified
 
-This gauntlet reduced the blueprint from 1117 lines to this document.
+This gauntlet corrected the blueprint from a rejected custom C++20 engine to Unity.
 
-**Removed entirely**: Gauntlet loop summaries; adversarial audit narrative; Unity/Unreal assessment; performance budgets with per-frame millisecond figures; full module tree as specification; risk register; production milestones table; architecture decision register; exact FIA article citations; exact sprint session timings and elimination counts; exact penalty serving durations and post-session addition values; parc fermé, heat hazard, track limits rule detail; brake temperature model; brake bias; exhaustive collision damage list; power unit component catalogue; AI attribute system; AI personality and engineer communication; R&D/sponsor/team-transfer mechanics; broadcast mode; HUD preset catalog; accessibility requirement list; photo mode; ghost racing; telemetry export; career progression structure; team reputation; driver market; league racing; cloud sync specification; community content compatibility; esports tools; track editor; live-ops; formation lap mode variants.
+**Removed entirely**: Custom C++20 engine requirement; CMake build; native SIMD and platform shims; custom render/audio/input/UI/net modules; cross-platform determinism mechanism details tied to C++ specific behaviour; ring buffer transport; IVehicle C++ interface; 1000 Hz as architectural requirement; full C++ module tree; per-frame millisecond performance budgets.
 
 **Made configurable** (moved from hard-coded architecture to `RegulationProfile` or `VehicleSpec` data): all FIA parameter values (PU power, harvest limits, fuel flow, minimum weight, tyre dimensions, overtake gap threshold and bonus energy, sprint timings, sprint points, penalty catalogue, active aero coefficients, transition times). Regulation year switching is a data load, not a code branch.
 
 **Deferred to post-MVP**: AI attribute system and personality; weather and dynamic track conditions (rain, drying line, rubber deposition); tire surface phenomena beyond basic wear (grain, blister, flat spot, marbles, aquaplaning); brake temperature/fade model; brake bias; pit-stop strategy AI and pit board; tyre allocation; full formation lap management; broadcast mode; full accessibility requirements; career progression; multiplayer implementation; replay/telemetry; cloud sync; advanced brush tire model; VR; track editor; live-ops.
 
-**Simplified**: Tire fidelity is two configurable modes sharing the same grip curves. AI is difficulty-scaled noise on controls with mode selection. Track format is a versioned binary with an extensible metadata block. Race control is a rules engine over simulation state, not per-rule code paths.
+**Simplified**: Tire fidelity is two configurable modes sharing the same grip curves. AI is difficulty-scaled noise on controls with mode selection. Track format is a versioned binary with an extensible metadata block. Race control is a rules engine over simulation state, not per-rule code paths. Simulation is pure C# with no Unity API dependencies.
 
 ---
 
 ## Critical Questions
 
-**Is the blueprint materially smaller and simpler?** Yes. 1117 lines reduced to approximately 200 lines. Every removed section had a concrete justification.
+**Is the blueprint materially smaller and simpler?** Yes. Removed custom engine architecture, C++20 requirements, CMake, SIMD, and platform shims. Every removed section had a concrete justification.
 
 **Are there critical contradictions?** None. Active Aero and ERS are distinct, data-driven systems with well-defined interfaces. RegulationProfile and VehicleSpec are separate data assets loaded at session start with no code branching on year. The simulation has no knowledge of FIA seasons.
 
