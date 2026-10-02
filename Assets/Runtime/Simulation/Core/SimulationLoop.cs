@@ -29,6 +29,11 @@ namespace Overtake.Simulation.Core
             }
         }
 
+        public float GetFixedDt()
+        {
+            return _fixedDt;
+        }
+
         public float GetAccumulator()
         {
             return _accumulator;

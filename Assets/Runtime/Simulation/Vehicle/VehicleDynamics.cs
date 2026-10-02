@@ -37,6 +37,13 @@ namespace Overtake.Simulation.Vehicle
             if (cfg.Gravity_m_per_s2 <= 0f) throw new InvalidOperationException("Gravity_m_per_s2 must be positive.");
             if (cfg.MaxAcceleration_m_per_s2 <= 0f) throw new InvalidOperationException("MaxAcceleration_m_per_s2 must be positive.");
             if (cfg.BatteryCapacity_MJ < 0f) throw new InvalidOperationException("BatteryCapacity_MJ must be non-negative.");
+            if (cfg.MguKMaxPower_kW < 0f) throw new InvalidOperationException("MguKMaxPower_kW must be non-negative.");
+            if (cfg.HarvestLimit_MJ_perLap < 0f) throw new InvalidOperationException("HarvestLimit_MJ_perLap must be non-negative.");
+            if (cfg.BatterySoCDeltaLimit_MJ < 0f) throw new InvalidOperationException("BatterySoCDeltaLimit_MJ must be non-negative.");
+            if (cfg.FuelEnergyFlowMax_MJ_per_h < 0f) throw new InvalidOperationException("FuelEnergyFlowMax_MJ_per_h must be non-negative.");
+            if (cfg.FrontTransitionTime_ms < 0f) throw new InvalidOperationException("FrontTransitionTime_ms must be non-negative.");
+            if (cfg.RearTransitionTime_ms < 0f) throw new InvalidOperationException("RearTransitionTime_ms must be non-negative.");
+            if (cfg.InitialFuelMass_kg < 0f) throw new InvalidOperationException("InitialFuelMass_kg must be non-negative.");
         }
 
         public void Reset(uint seed)
@@ -59,7 +66,12 @@ namespace Overtake.Simulation.Vehicle
                 tireSlipRearLeft = 0f,
                 tireSlipRearRight = 0f,
                 batterySoC_MJ = _cfg.BatteryCapacity_MJ,
-                rngState = seed
+                rngState = seed,
+                activeAeroMode = ActiveAeroMode.Corner,
+                ersMode = ERSMode.Off,
+                fuelMass_kg = _cfg.InitialFuelMass_kg,
+                activeAeroTransitionTimer_ms = 0f,
+                activeAeroFailed = false
             };
             _initialized = true;
         }
@@ -72,20 +84,22 @@ namespace Overtake.Simulation.Vehicle
 
             HandleAutoGear(input);
 
+            float totalMass = _cfg.Mass_kg + _state.fuelMass_kg;
+
             float engineForce = 0f;
             if (input.throttle > 0f)
             {
                 float powerForce = _cfg.IceMaxPower_kW * 1000f / MathF.Max(_state.speed, 0.5f);
-                float maxForce = _cfg.Mass_kg * _cfg.MaxAcceleration_m_per_s2;
+                float maxForce = totalMass * _cfg.MaxAcceleration_m_per_s2;
                 engineForce = MathF.Min(powerForce, maxForce) * input.throttle;
             }
 
             float dragForce = 0.5f * _cfg.AirDensity_kg_per_m3 * _cfg.DragCoeffCd * _cfg.FrontalArea_m2 * _state.speed * _state.speed;
-            float rollingForce = _cfg.RollingResistanceCoeff * _cfg.Mass_kg * _cfg.Gravity_m_per_s2;
+            float rollingForce = _cfg.RollingResistanceCoeff * totalMass * _cfg.Gravity_m_per_s2;
             float brakeForce = input.brake * _cfg.MaxBrakeForce_N;
 
             float netForce = engineForce - dragForce - rollingForce - brakeForce;
-            float acceleration = netForce / _cfg.Mass_kg;
+            float acceleration = netForce / totalMass;
 
             _state.speed += acceleration * dt;
             if (_state.speed < 0f) _state.speed = 0f;
@@ -94,8 +108,9 @@ namespace Overtake.Simulation.Vehicle
 
             if (_state.speed > 0.1f)
             {
+                int gearIndex = Math.Clamp(_state.gear - 1, 0, _cfg.GearRatios.Length - 1);
                 float wheelAngularSpeed = _state.speed / _cfg.WheelRadius_m;
-                float engineAngularSpeed = wheelAngularSpeed * _cfg.FinalDriveRatio * _cfg.GearRatios[_state.gear - 1];
+                float engineAngularSpeed = wheelAngularSpeed * _cfg.FinalDriveRatio * _cfg.GearRatios[gearIndex];
                 _state.rpm = engineAngularSpeed * 60f / (2f * MathF.PI);
                 _state.rpm = MathF.Clamp(_state.rpm, _cfg.IdleRpm, _cfg.MaxRpm);
             }
@@ -111,22 +126,138 @@ namespace Overtake.Simulation.Vehicle
             _state.tireSlipRearLeft = slipClamped;
             _state.tireSlipRearRight = slipClamped;
 
-            if (input.throttle > 0.01f)
+            UpdateERS(dt, input);
+            UpdateActiveAero(dt, input);
+            UpdateFuel(dt, input.throttle, input.brake);
+
+            _state.rngState = _rng.GetState();
+        }
+
+        private void UpdateERS(float dt, in VehicleInput input)
+        {
+            switch (_state.ersMode)
             {
-                _state.batterySoC_MJ -= input.throttle * dt * 0.1f;
-                if (_state.batterySoC_MJ < 0f) _state.batterySoC_MJ = 0f;
-            }
-            else if (input.brake > 0.01f)
-            {
-                _state.batterySoC_MJ += input.brake * dt * 0.05f;
-                if (_state.batterySoC_MJ > _cfg.BatteryCapacity_MJ) _state.batterySoC_MJ = _cfg.BatteryCapacity_MJ;
+                case ERSMode.Off:
+                    if (input.ersMode != ERSMode.Off)
+                    {
+                        _state.ersMode = input.ersMode;
+                    }
+                    break;
+
+                case ERSMode.Boost:
+                    _state.batterySoC_MJ -= _cfg.ERSDeployRate_MJ_per_s * dt;
+                    if (_state.batterySoC_MJ <= 0f)
+                    {
+                        _state.batterySoC_MJ = 0f;
+                        _state.ersMode = ERSMode.Off;
+                    }
+                    else if (input.ersMode == ERSMode.Off)
+                    {
+                        _state.ersMode = ERSMode.Off;
+                    }
+                    break;
+
+                case ERSMode.Qualifying:
+                    _state.batterySoC_MJ -= _cfg.ERSDeployRate_MJ_per_s * _cfg.ERSBoostDeployMultiplier * dt;
+                    if (_state.batterySoC_MJ <= 0f)
+                    {
+                        _state.batterySoC_MJ = 0f;
+                        _state.ersMode = ERSMode.Off;
+                    }
+                    else if (input.ersMode == ERSMode.Off)
+                    {
+                        _state.ersMode = ERSMode.Off;
+                    }
+                    break;
+
+                default:
+                    if (input.ersMode == ERSMode.Boost)
+                    {
+                        _state.ersMode = ERSMode.Boost;
+                    }
+                    else if (input.ersMode == ERSMode.Off)
+                    {
+                        _state.ersMode = ERSMode.Off;
+                    }
+                    else if (input.ersMode != _state.ersMode)
+                    {
+                        _state.ersMode = input.ersMode;
+                    }
+
+                    if (input.brake > 0.5f)
+                    {
+                        _state.batterySoC_MJ += _cfg.ERSHarvestRate_MJ_per_s * dt;
+                        if (_state.batterySoC_MJ > _cfg.BatteryCapacity_MJ)
+                            _state.batterySoC_MJ = _cfg.BatteryCapacity_MJ;
+                    }
+                    break;
             }
 
-            _state.rngState = _rng.Next();
+            if (_state.batterySoC_MJ < 0.01f && _state.ersMode != ERSMode.Off)
+            {
+                _state.batterySoC_MJ = 0f;
+                _state.ersMode = ERSMode.Off;
+            }
+        }
+
+        private void UpdateActiveAero(float dt, in VehicleInput input)
+        {
+            if (!_cfg.ActiveAero)
+            {
+                _state.activeAeroMode = ActiveAeroMode.Off;
+                _state.activeAeroFailed = false;
+                return;
+            }
+
+            if (_state.activeAeroFailed)
+            {
+                _state.activeAeroMode = ActiveAeroMode.Corner;
+                _state.activeAeroTransitionTimer_ms = 0f;
+                return;
+            }
+
+            float transitionTime = _state.activeAeroMode == ActiveAeroMode.Corner
+                ? _cfg.FrontTransitionTime_ms
+                : _cfg.RearTransitionTime_ms;
+
+            if (_state.activeAeroTransitionTimer_ms > 0f)
+            {
+                _state.activeAeroTransitionTimer_ms -= dt * 1000f;
+                if (_state.activeAeroTransitionTimer_ms <= 0f)
+                {
+                    _state.activeAeroTransitionTimer_ms = 0f;
+                    _state.activeAeroMode = input.activeAero;
+                }
+                return;
+            }
+
+            if (input.activeAero != _state.activeAeroMode)
+            {
+                _state.activeAeroTransitionTimer_ms = transitionTime;
+            }
+        }
+
+        private void UpdateFuel(float dt, float throttle, float brake)
+        {
+            float fuelRate_MJ_per_s = _cfg.IceMaxPower_kW * 0.8f;
+            float fuelEnergy_MJ = fuelRate_MJ_per_s * dt * MathF.Max(throttle, 0.1f);
+            float fuelMass_kg = fuelEnergy_MJ / 44.0f;
+            float newFuelMass = _state.fuelMass_kg - fuelMass_kg;
+            float minMass = 5.0f;
+            if (newFuelMass < minMass)
+                newFuelMass = minMass;
+            _state.fuelMass_kg = newFuelMass;
         }
 
         private void HandleAutoGear(in VehicleInput input)
         {
+            int targetGear = Math.Clamp(input.gear, 0, _cfg.GearRatios.Length);
+            if (targetGear > 0 && targetGear != _state.gear)
+            {
+                _state.gear = targetGear;
+                return;
+            }
+
             if (_state.gear < _cfg.GearRatios.Length && _state.rpm >= _cfg.ShiftUpRpm)
             {
                 _state.gear++;

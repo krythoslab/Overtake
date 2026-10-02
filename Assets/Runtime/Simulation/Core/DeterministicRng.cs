@@ -39,5 +39,15 @@ namespace Overtake.Simulation.Core
             } while (val >= limit);
             return minInclusive + (int)(val % range);
         }
+
+        public uint GetState()
+        {
+            return _state;
+        }
+
+        public void SetState(uint state)
+        {
+            _state = state;
+        }
     }
 }

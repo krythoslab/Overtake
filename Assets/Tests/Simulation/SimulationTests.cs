@@ -68,7 +68,7 @@ namespace Overtake.Simulation.Tests
             };
         }
 
-        private VehicleInput CreateInput(float throttle = 0.8f, float brake = 0f)
+        private VehicleInput CreateInput(float throttle = 0.8f, float brake = 0f, ERSMode ersMode = ERSMode.Medium, ActiveAeroMode activeAero = ActiveAeroMode.Corner)
         {
             return new VehicleInput
             {
@@ -77,8 +77,8 @@ namespace Overtake.Simulation.Tests
                 brake = brake,
                 clutch = 0f,
                 gear = 0,
-                activeAero = ActiveAeroMode.Corner,
-                ersMode = ERSMode.Medium
+                activeAero = activeAero,
+                ersMode = ersMode
             };
         }
 
@@ -252,6 +252,123 @@ namespace Overtake.Simulation.Tests
             for (int i = 0; i < 100; i++) sim.Step(0.02f, brake);
 
             Assert.Less(sim.CurrentState.speed, speedBeforeBrake, "Braking should reduce speed.");
+        }
+
+        [Test]
+        public void ERS_Boost_DrainsBattery()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 0.5f, ersMode: ERSMode.Boost);
+            input.gear = 1;
+
+            float initialBattery = sim.CurrentState.batterySoC_MJ;
+            for (int i = 0; i < 100; i++)
+            {
+                sim.Step(0.02f, input);
+            }
+
+            Assert.Less(sim.CurrentState.batterySoC_MJ, initialBattery, "ERS Boost should drain battery.");
+        }
+
+        [Test]
+        public void ERS_BatteryEmpty_ForcesOff()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 0.1f, ersMode: ERSMode.Boost);
+            input.gear = 1;
+
+            for (int i = 0; i < 2000; i++)
+            {
+                sim.Step(0.02f, input);
+            }
+
+            Assert.AreEqual(ERSMode.Off, sim.CurrentState.ersMode, "ERS should turn off when battery is empty.");
+            Assert.AreEqual(0f, sim.CurrentState.batterySoC_MJ, 1e-5f, "Battery should be at zero.");
+        }
+
+        [Test]
+        public void ERS_Harvest_IncreasesBattery()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 0f, brake: 1f, ersMode: ERSMode.Medium);
+            input.gear = 1;
+
+            float initialBattery = sim.CurrentState.batterySoC_MJ;
+            for (int i = 0; i < 100; i++)
+            {
+                sim.Step(0.02f, input);
+            }
+
+            Assert.Greater(sim.CurrentState.batterySoC_MJ, initialBattery, "Braking with ERS Medium should harvest energy.");
+        }
+
+        [Test]
+        public void FuelMass_DecreasesOverTime()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 0.8f);
+            input.gear = 1;
+
+            float initialFuel = sim.CurrentState.fuelMass_kg;
+            for (int i = 0; i < 600; i++)
+            {
+                sim.Step(0.02f, input);
+            }
+
+            Assert.Less(sim.CurrentState.fuelMass_kg, initialFuel, "Fuel mass should decrease.");
+        }
+
+        [Test]
+        public void ActiveAero_TransitionTimer_BlocksModeChange()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 0.5f, activeAero: ActiveAeroMode.StraightLine);
+            input.gear = 1;
+
+            sim.Step(0.02f, input);
+            Assert.AreEqual(ActiveAeroMode.Corner, sim.CurrentState.activeAeroMode, "Should still be Corner during transition.");
+
+            sim.Step(0.02f, input);
+            Assert.AreEqual(ActiveAeroMode.Corner, sim.CurrentState.activeAeroMode, "Should still be Corner during transition.");
+
+            sim.Step(0.02f, input);
+            Assert.AreEqual(ActiveAeroMode.Corner, sim.CurrentState.activeAeroMode, "Should still be Corner during transition.");
+
+            sim.Step(0.02f, input);
+            Assert.AreEqual(ActiveAeroMode.StraightLine, sim.CurrentState.activeAeroMode, "Should transition to StraightLine after timer.");
+        }
+
+        [Test]
+        public void Determinism_PreservedWithERSAndActiveAero()
+        {
+            var input = CreateInput(throttle: 0.8f, ersMode: ERSMode.Boost, activeAero: ActiveAeroMode.StraightLine);
+            input.gear = 1;
+
+            VehicleState firstState = default;
+            bool first = true;
+
+            for (int run = 0; run < 5; run++)
+            {
+                var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+                for (int i = 0; i < 600; i++)
+                {
+                    sim.Step(0.02f, input);
+                }
+                var state = sim.CurrentState;
+                if (first)
+                {
+                    firstState = state;
+                    first = false;
+                }
+                else
+                {
+                    Assert.AreEqual(firstState.speed, state.speed, 1e-5f, $"Run {run} speed mismatch.");
+                    Assert.AreEqual(firstState.batterySoC_MJ, state.batterySoC_MJ, 1e-5f, $"Run {run} battery mismatch.");
+                    Assert.AreEqual(firstState.ersMode, state.ersMode, $"Run {run} ERS mode mismatch.");
+                    Assert.AreEqual(firstState.activeAeroMode, state.activeAeroMode, $"Run {run} active aero mode mismatch.");
+                    Assert.AreEqual(firstState.fuelMass_kg, state.fuelMass_kg, 1e-4f, $"Run {run} fuel mass mismatch.");
+                }
+            }
         }
 
         private VehicleSpec CloneSpec(VehicleSpec original)
