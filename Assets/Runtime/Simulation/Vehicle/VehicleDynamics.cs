@@ -44,6 +44,7 @@ namespace Overtake.Simulation.Vehicle
             if (cfg.FrontTransitionTime_ms < 0f) throw new InvalidOperationException("FrontTransitionTime_ms must be non-negative.");
             if (cfg.RearTransitionTime_ms < 0f) throw new InvalidOperationException("RearTransitionTime_ms must be non-negative.");
             if (cfg.InitialFuelMass_kg < 0f) throw new InvalidOperationException("InitialFuelMass_kg must be non-negative.");
+            if (cfg.FuelFlowRpmCurveMaxRpm < 0f) throw new InvalidOperationException("FuelFlowRpmCurveMaxRpm must be non-negative.");
         }
 
         public void Reset(uint seed)
@@ -71,7 +72,19 @@ namespace Overtake.Simulation.Vehicle
                 ersMode = ERSMode.Off,
                 fuelMass_kg = _cfg.InitialFuelMass_kg,
                 activeAeroTransitionTimer_ms = 0f,
-                activeAeroFailed = false
+                activeAeroFailed = false,
+                suspensionTravelFL_mm = 0f,
+                suspensionTravelFR_mm = 0f,
+                suspensionTravelRL_mm = 0f,
+                suspensionTravelRR_mm = 0f,
+                rideHeightFL_mm = _cfg.RideHeight_min_mm,
+                rideHeightFR_mm = _cfg.RideHeight_min_mm,
+                rideHeightRL_mm = _cfg.RideHeight_min_mm,
+                rideHeightRR_mm = _cfg.RideHeight_min_mm,
+                suspensionVelocityFL_m_per_s = 0f,
+                suspensionVelocityFR_m_per_s = 0f,
+                suspensionVelocityRL_m_per_s = 0f,
+                suspensionVelocityRR_m_per_s = 0f
             };
             _initialized = true;
         }
@@ -129,8 +142,110 @@ namespace Overtake.Simulation.Vehicle
             UpdateERS(dt, input);
             UpdateActiveAero(dt, input);
             UpdateFuel(dt, input.throttle, input.brake);
+            UpdateSuspension(dt, acceleration, totalMass);
 
             _state.rngState = _rng.GetState();
+        }
+
+        private void UpdateSuspension(float dt, float acceleration, float totalMass)
+        {
+            float staticRideHeight_m = _cfg.RideHeight_min_mm / 1000f;
+
+            float[] staticHeights = { staticRideHeight_m, staticRideHeight_m, staticRideHeight_m, staticRideHeight_m };
+
+            float loadTransferPerWheel = (totalMass * acceleration * 0.5f) / 4f * 0.1f;
+
+            float[] loadTransfer = {
+                -loadTransferPerWheel, -loadTransferPerWheel,
+                loadTransferPerWheel, loadTransferPerWheel
+            };
+
+            float[] currentHeights = {
+                _state.rideHeightFL_mm / 1000f,
+                _state.rideHeightFR_mm / 1000f,
+                _state.rideHeightRL_mm / 1000f,
+                _state.rideHeightRR_mm / 1000f
+            };
+
+            float[] velocities = {
+                _state.suspensionVelocityFL_m_per_s,
+                _state.suspensionVelocityFR_m_per_s,
+                _state.suspensionVelocityRL_m_per_s,
+                _state.suspensionVelocityRR_m_per_s
+            };
+
+            float[] springRates = {
+                _cfg.FrontSpringRate_N_per_m, _cfg.FrontSpringRate_N_per_m,
+                _cfg.RearSpringRate_N_per_m, _cfg.RearSpringRate_N_per_m
+            };
+
+            float[] dampers = {
+                _cfg.FrontDampingCompression, _cfg.FrontDampingCompression,
+                _cfg.RearDampingCompression, _cfg.RearDampingCompression
+            };
+
+            float[] dampersRebound = {
+                _cfg.FrontDampingRebound, _cfg.FrontDampingRebound,
+                _cfg.RearDampingRebound, _cfg.RearDampingRebound
+            };
+
+            for (int i = 0; i < 4; i++)
+            {
+                float equilibriumHeight = staticHeights[i] - loadTransfer[i] / springRates[i];
+                float displacement = currentHeights[i] - equilibriumHeight;
+                float travel_mm = (float)(displacement * 1000f);
+
+                float springForce = springRates[i] * displacement;
+                float damperForce = velocities[i] > 0f ? dampers[i] * velocities[i] : dampersRebound[i] * velocities[i];
+                float bumpStopForce = 0f;
+
+                if (travel_mm > _cfg.SuspensionMaxTravel_mm)
+                {
+                    float excess = travel_mm - _cfg.SuspensionMaxTravel_mm;
+                    bumpStopForce = _cfg.BumpStopStiffness_N_per_m * (excess / 1000f);
+                }
+                else if (travel_mm < 0f)
+                {
+                    travel_mm = 0f;
+                }
+
+                float massPerWheel = totalMass * _cfg.Gravity_m_per_s2 / 4f;
+                float totalForce = springForce + damperForce + bumpStopForce;
+                float acceleration_local = totalForce / massPerWheel;
+
+                velocities[i] += acceleration_local * dt;
+                currentHeights[i] += velocities[i] * dt;
+
+                float newTravel_mm = (currentHeights[i] - staticHeights[i]) * 1000f;
+                if (newTravel_mm < 0f) newTravel_mm = 0f;
+                if (newTravel_mm > _cfg.SuspensionMaxTravel_mm) newTravel_mm = _cfg.SuspensionMaxTravel_mm;
+
+                float newRideHeight_mm = staticRideHeight_m * 1000f + newTravel_mm;
+
+                switch (i)
+                {
+                    case 0:
+                        _state.suspensionTravelFL_mm = newTravel_mm;
+                        _state.rideHeightFL_mm = newRideHeight_mm;
+                        _state.suspensionVelocityFL_m_per_s = velocities[i];
+                        break;
+                    case 1:
+                        _state.suspensionTravelFR_mm = newTravel_mm;
+                        _state.rideHeightFR_mm = newRideHeight_mm;
+                        _state.suspensionVelocityFR_m_per_s = velocities[i];
+                        break;
+                    case 2:
+                        _state.suspensionTravelRL_mm = newTravel_mm;
+                        _state.rideHeightRL_mm = newRideHeight_mm;
+                        _state.suspensionVelocityRL_m_per_s = velocities[i];
+                        break;
+                    case 3:
+                        _state.suspensionTravelRR_mm = newTravel_mm;
+                        _state.rideHeightRR_mm = newRideHeight_mm;
+                        _state.suspensionVelocityRR_m_per_s = velocities[i];
+                        break;
+                }
+            }
         }
 
         private void UpdateERS(float dt, in VehicleInput input)

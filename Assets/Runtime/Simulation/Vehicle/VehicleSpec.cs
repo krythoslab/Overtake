@@ -10,6 +10,7 @@ namespace Overtake.Simulation.Vehicle
         public Aero Aero { get; set; } = new Aero();
         public Dynamics Dynamics { get; set; } = new Dynamics();
         public Tires Tires { get; set; } = new Tires();
+        public Suspension Suspension { get; set; } = new Suspension();
         public Fidelity Fidelity { get; set; } = new Fidelity();
 
         public class Pu
@@ -19,10 +20,15 @@ namespace Overtake.Simulation.Vehicle
             public float? MguKOvertakeMaxPower_kW { get; set; }
             public float? MguKHarvestMax_kW { get; set; }
             public float? HarvestLimit_MJ_perLap { get; set; }
+            public float? HarvestLimitWithOvertake_MJ_perLap { get; set; }
             public float? BatteryCapacity_MJ { get; set; }
             public float? BatterySoCDeltaLimit_MJ { get; set; }
+            public float? DeployRate_MJ_per_s { get; set; }
+            public float? HarvestRate_MJ_per_s { get; set; }
+            public float? BoostDeployMultiplier { get; set; }
             public float? FuelEnergyFlowMax_MJ_per_h { get; set; }
             public string FuelFlowRpmCurve { get; set; }
+            public float? FuelFlowRpmCurveMaxRpm { get; set; }
             public bool? HasMguH { get; set; }
         }
 
@@ -60,6 +66,22 @@ namespace Overtake.Simulation.Vehicle
         {
             public float? FrontWidth_mm { get; set; }
             public float? RearWidth_mm { get; set; }
+        }
+
+        public class Suspension
+        {
+            public float? FrontSpringRate_N_per_m { get; set; }
+            public float? RearSpringRate_N_per_m { get; set; }
+            public float? FrontDampingCompression { get; set; }
+            public float? FrontDampingRebound { get; set; }
+            public float? RearDampingCompression { get; set; }
+            public float? RearDampingRebound { get; set; }
+            public float? FrontAntiRollBarNm_per_rad { get; set; }
+            public float? RearAntiRollBarNm_per_rad { get; set; }
+            public float? MaxTravel_mm { get; set; }
+            public float? BumpStopStiffness_N_per_m { get; set; }
+            public float? RideHeight_min_mm { get; set; }
+            public float? RideHeight_max_mm { get; set; }
         }
 
         public class Fidelity

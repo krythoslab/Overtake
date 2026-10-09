@@ -23,5 +23,18 @@ namespace Overtake.Simulation.Vehicle
         public float fuelMass_kg;
         public float activeAeroTransitionTimer_ms;
         public bool activeAeroFailed;
+
+        public float suspensionTravelFL_mm;
+        public float suspensionTravelFR_mm;
+        public float suspensionTravelRL_mm;
+        public float suspensionTravelRR_mm;
+        public float rideHeightFL_mm;
+        public float rideHeightFR_mm;
+        public float rideHeightRL_mm;
+        public float rideHeightRR_mm;
+        public float suspensionVelocityFL_m_per_s;
+        public float suspensionVelocityFR_m_per_s;
+        public float suspensionVelocityRL_m_per_s;
+        public float suspensionVelocityRR_m_per_s;
     }
 }
