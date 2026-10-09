@@ -29,6 +29,8 @@ namespace Overtake.Simulation.Vehicle
         public float BatterySoCDeltaLimit_MJ;
         public float FuelEnergyFlowMax_MJ_per_h;
         public string FuelFlowRpmCurve;
+        public float FuelFlowRpmCurveMaxRpm;
+        public float HarvestLimitWithOvertake_MJ_perLap;
         public bool HasMguH;
         public bool ActiveAero;
         public float CornerModeDownforceCoeff;
@@ -42,6 +44,19 @@ namespace Overtake.Simulation.Vehicle
         public float ERSDeployRate_MJ_per_s;
         public float ERSBoostDeployMultiplier;
         public float ERSHarvestRate_MJ_per_s;
+
+        public float FrontSpringRate_N_per_m;
+        public float RearSpringRate_N_per_m;
+        public float FrontDampingCompression;
+        public float FrontDampingRebound;
+        public float RearDampingCompression;
+        public float RearDampingRebound;
+        public float FrontAntiRollBarNm_per_rad;
+        public float RearAntiRollBarNm_per_rad;
+        public float SuspensionMaxTravel_mm;
+        public float BumpStopStiffness_N_per_m;
+        public float RideHeight_min_mm;
+        public float RideHeight_max_mm;
     }
 
     public static class VehicleConfigFactory
@@ -52,6 +67,7 @@ namespace Overtake.Simulation.Vehicle
             var rD = regs != null && regs.Dynamics != null ? regs.Dynamics : null;
             var sPu = spec != null && spec.Pu != null ? spec.Pu : null;
             var rPu = regs != null && regs.Pu != null ? regs.Pu : null;
+            var rErs = regs != null && regs.Ers != null ? regs.Ers : null;
             var sAero = spec != null && spec.Aero != null ? spec.Aero : null;
             var rAero = regs != null && regs.Aero != null ? regs.Aero : null;
             var sTires = spec != null && spec.Tires != null ? spec.Tires : null;
@@ -67,10 +83,18 @@ namespace Overtake.Simulation.Vehicle
                 return !string.IsNullOrEmpty(specVal) ? specVal : regVal;
             }
 
-            bool ValBool(bool? specVal, bool regVal)
+            float ValBool(bool? specVal, bool regVal)
             {
                 return specVal ?? regVal;
             }
+
+            float ValSuspend(float? specVal, float regVal)
+            {
+                return specVal ?? regVal;
+            }
+
+            var rSusp = regs != null && regs.Suspension != null ? regs.Suspension : null;
+            var sSusp = spec != null && spec.Suspension != null ? spec.Suspension : null;
 
             float[] ValGears(float[] specGears, float[] regGears)
             {
@@ -101,13 +125,15 @@ namespace Overtake.Simulation.Vehicle
                 Gravity_m_per_s2 = Val(sD?.Gravity_m_per_s2, rD?.Gravity_m_per_s2 ?? 9.81f),
                 MaxAcceleration_m_per_s2 = Val(sD?.MaxAcceleration_m_per_s2, rD?.MaxAcceleration_m_per_s2 ?? 8.0f),
                 BatteryCapacity_MJ = sPu?.BatteryCapacity_MJ ?? 4.5f,
-                MguKMaxPower_kW = Val(sPu?.MguKMaxPower_kW, rPu?.MguKMaxPower_kW ?? 350f),
-                MguKOvertakeMaxPower_kW = Val(sPu?.MguKOvertakeMaxPower_kW, rPu?.MguKMaxPower_kW ?? 350f),
-                MguKHarvestMax_kW = Val(sPu?.MguKHarvestMax_kW, rPu?.HarvestMaxPower_kW ?? 350f),
-                HarvestLimit_MJ_perLap = Val(sPu?.HarvestLimit_MJ_perLap, rPu?.HarvestLimit_MJ_perLap ?? 8.5f),
-                BatterySoCDeltaLimit_MJ = Val(sPu?.BatterySoCDeltaLimit_MJ, rPu?.BatterySoCDeltaLimit_MJ ?? 4.0f),
+                MguKMaxPower_kW = Val(sPu?.MguKMaxPower_kW, rErs?.MguKMaxPower_kW ?? 350f),
+                MguKOvertakeMaxPower_kW = Val(sPu?.MguKOvertakeMaxPower_kW, rErs?.MguKMaxPower_kW ?? 350f),
+                MguKHarvestMax_kW = Val(sPu?.MguKHarvestMax_kW, rErs?.HarvestMaxPower_kW ?? 350f),
+                HarvestLimit_MJ_perLap = Val(sPu?.HarvestLimit_MJ_perLap, rErs?.HarvestLimit_MJ_perLap ?? 8.5f),
+                HarvestLimitWithOvertake_MJ_perLap = Val(sPu?.HarvestLimitWithOvertake_MJ_perLap, rErs?.HarvestLimitWithOvertake_MJ_perLap ?? 9.0f),
+                BatterySoCDeltaLimit_MJ = Val(sPu?.BatterySoCDeltaLimit_MJ, rErs?.BatterySoCDeltaLimit_MJ ?? 4.0f),
                 FuelEnergyFlowMax_MJ_per_h = Val(sPu?.FuelEnergyFlowMax_MJ_per_h, rPu?.FuelEnergyFlowMax_MJ_per_h ?? 3000f),
                 FuelFlowRpmCurve = ValStr(sPu?.FuelFlowRpmCurve, rPu?.FuelFlowRpmCurve ?? "0.27 * rpm + 165"),
+                FuelFlowRpmCurveMaxRpm = Val(sPu?.FuelFlowRpmCurveMaxRpm, rPu?.FuelFlowRpmCurveMaxRpm ?? 10500f),
                 HasMguH = ValBool(sPu?.HasMguH, rPu?.HasMguH ?? false),
                 ActiveAero = ValBool(sAero?.ActiveAero, rAero?.ActiveAero ?? true),
                 CornerModeDownforceCoeff = Val(sAero?.CornerModeDownforceCoeff, rAero?.CornerModeDownforceCoeff ?? 1.0f),
@@ -116,11 +142,24 @@ namespace Overtake.Simulation.Vehicle
                 StraightModeDragCoeff = Val(sAero?.StraightModeDragCoeff, rAero?.StraightModeDragCoeff ?? 0.45f),
                 FrontTransitionTime_ms = Val(sAero?.FrontTransitionTime_ms, rAero?.FrontTransitionTime_ms ?? 50f),
                 RearTransitionTime_ms = Val(sAero?.RearTransitionTime_ms, rAero?.RearTransitionTime_ms ?? 50f),
-                FrontWidth_mm = Val(sTires?.FrontWidth_mm, rTires?.FrontWidth_mm ?? 270f),
-                RearWidth_mm = Val(sTires?.RearWidth_mm, rTires?.RearWidth_mm ?? 355f),
-                ERSDeployRate_MJ_per_s = 0.8f,
-                ERSBoostDeployMultiplier = 1.5f,
-                ERSHarvestRate_MJ_per_s = 0.5f
+                FrontWidth_mm = Val(sTires?.FrontWidth_mm, rTires?.FrontWidth_mm ?? 280f),
+                RearWidth_mm = Val(sTires?.RearWidth_mm, rTires?.RearWidth_mm ?? 375f),
+                ERSDeployRate_MJ_per_s = Val(sPu?.DeployRate_MJ_per_s, rErs?.DeployRate_MJ_per_s ?? 0.35f),
+                ERSBoostDeployMultiplier = Val(sPu?.BoostDeployMultiplier, rErs?.BoostDeployMultiplier ?? 1.5f),
+                ERSHarvestRate_MJ_per_s = Val(sPu?.HarvestRate_MJ_per_s, rErs?.HarvestRate_MJ_per_s ?? 0.35f),
+
+                FrontSpringRate_N_per_m = ValSuspend(sSusp?.FrontSpringRate_N_per_m, rSusp?.SpringRate_N_per_m ?? 120000f),
+                RearSpringRate_N_per_m = ValSuspend(sSusp?.RearSpringRate_N_per_m, rSusp?.SpringRate_N_per_m ?? 120000f),
+                FrontDampingCompression = ValSuspend(sSusp?.FrontDampingCompression, rSusp?.DamperCompression_N_per_m ?? 80000f),
+                FrontDampingRebound = ValSuspend(sSusp?.FrontDampingRebound, rSusp?.DamperRebound_N_per_m ?? 120000f),
+                RearDampingCompression = ValSuspend(sSusp?.RearDampingCompression, rSusp?.DamperCompression_N_per_m ?? 80000f),
+                RearDampingRebound = ValSuspend(sSusp?.RearDampingRebound, rSusp?.DamperRebound_N_per_m ?? 120000f),
+                FrontAntiRollBarNm_per_rad = ValSuspend(sSusp?.FrontAntiRollBarNm_per_rad, rSusp?.AntiRollBarStiffness_Nm_per_rad ?? 50000f),
+                RearAntiRollBarNm_per_rad = ValSuspend(sSusp?.RearAntiRollBarNm_per_rad, rSusp?.AntiRollBarStiffness_Nm_per_rad ?? 50000f),
+                SuspensionMaxTravel_mm = ValSuspend(sSusp?.MaxTravel_mm, rSusp?.MaxTravel_mm ?? 100f),
+                BumpStopStiffness_N_per_m = ValSuspend(sSusp?.BumpStopStiffness_N_per_m, rSusp?.BumpStopStiffness_N_per_m ?? 500000f),
+                RideHeight_min_mm = ValSuspend(sSusp?.RideHeight_min_mm, rSusp?.RideHeight_min_mm ?? 20f),
+                RideHeight_max_mm = ValSuspend(sSusp?.RideHeight_max_mm, rSusp?.RideHeight_max_mm ?? 50f)
             };
         }
     }

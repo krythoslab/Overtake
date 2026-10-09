@@ -12,17 +12,29 @@ namespace Overtake.Simulation.Tests
         [SetUp]
         public void SetUp()
         {
-            _spec = new VehicleSpec
-            {
-                Id = "test_car",
-                DisplayName = "Test Car",
-                RegulationProfileId = "test_regs",
-                Pu = new VehicleSpec.Pu
+                _spec = new VehicleSpec
                 {
-                    IceMaxPower_kW = 400f,
-                    MguKMaxPower_kW = 350f,
-                    BatteryCapacity_MJ = 4.5f
-                },
+                    Id = "test_car",
+                    DisplayName = "Test Car",
+                    RegulationProfileId = "test_regs",
+                    Pu = new VehicleSpec.Pu
+                    {
+                        IceMaxPower_kW = 400f,
+                        MguKMaxPower_kW = 350f,
+                        MguKOvertakeMaxPower_kW = 350f,
+                        MguKHarvestMax_kW = 350f,
+                        HarvestLimit_MJ_perLap = 8.5f,
+                        HarvestLimitWithOvertake_MJ_perLap = 9.0f,
+                        BatteryCapacity_MJ = 4.5f,
+                        BatterySoCDeltaLimit_MJ = 4.0f,
+                        FuelEnergyFlowMax_MJ_per_h = 3000f,
+                        FuelFlowRpmCurve = "0.27 * rpm + 165",
+                        FuelFlowRpmCurveMaxRpm = 10500f,
+                        DeployRate_MJ_per_s = 0.35f,
+                        HarvestRate_MJ_per_s = 0.35f,
+                        BoostDeployMultiplier = 1.5f,
+                        HasMguH = false
+                    },
                 Dynamics = new VehicleSpec.Dynamics
                 {
                     Mass_kg = 768f,
@@ -43,29 +55,48 @@ namespace Overtake.Simulation.Tests
                 }
             };
 
-            _regs = new RegulationProfile
-            {
-                Id = "test_regs",
-                DisplayName = "Test Regulations",
-                Dynamics = new RegulationProfile.Dynamics
+                _regs = new RegulationProfile
                 {
-                    Mass_kg = 768f,
-                    DragCoeffCd = 0.7f,
-                    FrontalArea_m2 = 1.5f,
-                    RollingResistanceCoeff = 0.015f,
-                    WheelRadius_m = 0.33f,
-                    MaxBrakeForce_N = 20000f,
-                    GearRatios = new float[] { 3.0f, 2.5f, 2.0f, 1.5f, 1.2f, 1.0f },
-                    FinalDriveRatio = 3.2f,
-                    IdleRpm = 800f,
-                    MaxRpm = 15000f,
-                    ShiftUpRpm = 12000f,
-                    ShiftDownRpm = 5000f,
-                    AirDensity_kg_per_m3 = 1.225f,
-                    Gravity_m_per_s2 = 9.81f,
-                    MaxAcceleration_m_per_s2 = 8.0f
-                }
-            };
+                    Id = "test_regs",
+                    DisplayName = "Test Regulations",
+                    Ers = new RegulationProfile.Ers
+                    {
+                        MguKMaxPower_kW = 350f,
+                        HarvestMaxPower_kW = 350f,
+                        HarvestLimit_MJ_perLap = 8.5f,
+                        HarvestLimitWithOvertake_MJ_perLap = 9.0f,
+                        BatterySoCDeltaLimit_MJ = 4.0f,
+                        DeployRate_MJ_per_s = 0.35f,
+                        HarvestRate_MJ_per_s = 0.35f,
+                        BoostDeployMultiplier = 1.5f
+                    },
+                    Pu = new RegulationProfile.Pu
+                    {
+                        IceMaxPower_kW = 400f,
+                        FuelEnergyFlowMax_MJ_per_h = 3000f,
+                        FuelFlowRpmCurve = "0.27 * rpm + 165",
+                        FuelFlowRpmCurveMaxRpm = 10500f,
+                        HasMguH = false
+                    },
+                    Dynamics = new RegulationProfile.Dynamics
+                    {
+                        Mass_kg = 768f,
+                        DragCoeffCd = 0.7f,
+                        FrontalArea_m2 = 1.5f,
+                        RollingResistanceCoeff = 0.015f,
+                        WheelRadius_m = 0.33f,
+                        MaxBrakeForce_N = 20000f,
+                        GearRatios = new float[] { 3.0f, 2.5f, 2.0f, 1.5f, 1.2f, 1.0f },
+                        FinalDriveRatio = 3.2f,
+                        IdleRpm = 800f,
+                        MaxRpm = 15000f,
+                        ShiftUpRpm = 12000f,
+                        ShiftDownRpm = 5000f,
+                        AirDensity_kg_per_m3 = 1.225f,
+                        Gravity_m_per_s2 = 9.81f,
+                        MaxAcceleration_m_per_s2 = 8.0f
+                    }
+                };
         }
 
         private VehicleInput CreateInput(float throttle = 0.8f, float brake = 0f, ERSMode ersMode = ERSMode.Medium, ActiveAeroMode activeAero = ActiveAeroMode.Corner)
@@ -290,6 +321,10 @@ namespace Overtake.Simulation.Tests
         public void ERS_Harvest_IncreasesBattery()
         {
             var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var drain = CreateInput(throttle: 0.5f, brake: 0f, ersMode: ERSMode.Boost);
+            drain.gear = 1;
+            for (int i = 0; i < 200; i++) sim.Step(0.02f, drain);
+
             var input = CreateInput(throttle: 0f, brake: 1f, ersMode: ERSMode.Medium);
             input.gear = 1;
 
@@ -300,6 +335,36 @@ namespace Overtake.Simulation.Tests
             }
 
             Assert.Greater(sim.CurrentState.batterySoC_MJ, initialBattery, "Braking with ERS Medium should harvest energy.");
+        }
+
+        [Test]
+        public void ERSDeployRate_SourcedFromRegulationProfile()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 0.5f, ersMode: ERSMode.Boost);
+            input.gear = 1;
+
+            float initialBattery = sim.CurrentState.batterySoC_MJ;
+            sim.Step(0.02f, input);
+            float actualDrain = initialBattery - sim.CurrentState.batterySoC_MJ;
+            float expectedDrain = 0.35f * 0.02f;
+
+            Assert.AreEqual(expectedDrain, actualDrain, 1e-5f, "ERS deploy rate should be 0.35 MJ/s (350 kW), not the old 0.8 MJ/s (800 kW).");
+        }
+
+        [Test]
+        public void Suspension_Travel_ChangesWithAcceleration()
+        {
+            var sim = new SingleCarSimulation(_spec, _regs, 12345u, 0.02f);
+            var input = CreateInput(throttle: 1f, ersMode: ERSMode.Off, activeAero: ActiveAeroMode.Corner);
+            input.gear = 1;
+
+            float initialTravelFL = sim.CurrentState.suspensionTravelFL_mm;
+
+            for (int i = 0; i < 500; i++) sim.Step(0.02f, input);
+
+            float finalTravelFL = sim.CurrentState.suspensionTravelFL_mm;
+            Assert.AreNotEqual(initialTravelFL, finalTravelFL, 1e-5f, "Suspension travel should change under acceleration forces.");
         }
 
         [Test]
@@ -382,7 +447,39 @@ namespace Overtake.Simulation.Tests
                 {
                     IceMaxPower_kW = original.Pu.IceMaxPower_kW,
                     MguKMaxPower_kW = original.Pu.MguKMaxPower_kW,
-                    BatteryCapacity_MJ = original.Pu.BatteryCapacity_MJ
+                    MguKOvertakeMaxPower_kW = original.Pu.MguKOvertakeMaxPower_kW,
+                    MguKHarvestMax_kW = original.Pu.MguKHarvestMax_kW,
+                    HarvestLimit_MJ_perLap = original.Pu.HarvestLimit_MJ_perLap,
+                    HarvestLimitWithOvertake_MJ_perLap = original.Pu.HarvestLimitWithOvertake_MJ_perLap,
+                    BatteryCapacity_MJ = original.Pu.BatteryCapacity_MJ,
+                    BatterySoCDeltaLimit_MJ = original.Pu.BatterySoCDeltaLimit_MJ,
+                    DeployRate_MJ_per_s = original.Pu.DeployRate_MJ_per_s,
+                    HarvestRate_MJ_per_s = original.Pu.HarvestRate_MJ_per_s,
+                    BoostDeployMultiplier = original.Pu.BoostDeployMultiplier,
+                    FuelEnergyFlowMax_MJ_per_h = original.Pu.FuelEnergyFlowMax_MJ_per_h,
+                    FuelFlowRpmCurve = original.Pu.FuelFlowRpmCurve,
+                    FuelFlowRpmCurveMaxRpm = original.Pu.FuelFlowRpmCurveMaxRpm,
+                    HasMguH = original.Pu.HasMguH
+                },
+                Tires = new VehicleSpec.Tires
+                {
+                    FrontWidth_mm = original.Tires?.FrontWidth_mm,
+                    RearWidth_mm = original.Tires?.RearWidth_mm
+                },
+                Suspension = new VehicleSpec.Suspension
+                {
+                    FrontSpringRate_N_per_m = original.Suspension?.FrontSpringRate_N_per_m,
+                    RearSpringRate_N_per_m = original.Suspension?.RearSpringRate_N_per_m,
+                    FrontDampingCompression = original.Suspension?.FrontDampingCompression,
+                    FrontDampingRebound = original.Suspension?.FrontDampingRebound,
+                    RearDampingCompression = original.Suspension?.RearDampingCompression,
+                    RearDampingRebound = original.Suspension?.RearDampingRebound,
+                    FrontAntiRollBarNm_per_rad = original.Suspension?.FrontAntiRollBarNm_per_rad,
+                    RearAntiRollBarNm_per_rad = original.Suspension?.RearAntiRollBarNm_per_rad,
+                    MaxTravel_mm = original.Suspension?.MaxTravel_mm,
+                    BumpStopStiffness_N_per_m = original.Suspension?.BumpStopStiffness_N_per_m,
+                    RideHeight_min_mm = original.Suspension?.RideHeight_min_mm,
+                    RideHeight_max_mm = original.Suspension?.RideHeight_max_mm
                 },
                 Dynamics = new VehicleSpec.Dynamics
                 {
@@ -411,6 +508,25 @@ namespace Overtake.Simulation.Tests
             {
                 Id = original.Id,
                 DisplayName = original.DisplayName,
+                Ers = new RegulationProfile.Ers
+                {
+                    MguKMaxPower_kW = original.Ers.MguKMaxPower_kW,
+                    HarvestMaxPower_kW = original.Ers.HarvestMaxPower_kW,
+                    HarvestLimit_MJ_perLap = original.Ers.HarvestLimit_MJ_perLap,
+                    HarvestLimitWithOvertake_MJ_perLap = original.Ers.HarvestLimitWithOvertake_MJ_perLap,
+                    BatterySoCDeltaLimit_MJ = original.Ers.BatterySoCDeltaLimit_MJ,
+                    DeployRate_MJ_per_s = original.Ers.DeployRate_MJ_per_s,
+                    HarvestRate_MJ_per_s = original.Ers.HarvestRate_MJ_per_s,
+                    BoostDeployMultiplier = original.Ers.BoostDeployMultiplier
+                },
+                Pu = new RegulationProfile.Pu
+                {
+                    IceMaxPower_kW = original.Pu.IceMaxPower_kW,
+                    FuelEnergyFlowMax_MJ_per_h = original.Pu.FuelEnergyFlowMax_MJ_per_h,
+                    FuelFlowRpmCurve = original.Pu.FuelFlowRpmCurve,
+                    FuelFlowRpmCurveMaxRpm = original.Pu.FuelFlowRpmCurveMaxRpm,
+                    HasMguH = original.Pu.HasMguH
+                },
                 Dynamics = new RegulationProfile.Dynamics
                 {
                     Mass_kg = original.Dynamics.Mass_kg,

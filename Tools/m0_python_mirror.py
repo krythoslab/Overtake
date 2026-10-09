@@ -56,11 +56,23 @@ class VehicleConfig:
         self.straight_mode_drag_coeff = 0.45
         self.front_transition_time_ms = 50.0
         self.rear_transition_time_ms = 50.0
-        self.front_width_mm = 270.0
-        self.rear_width_mm = 355.0
-        self.ers_deploy_rate_mj_per_s = 0.8
+        self.front_width_mm = 280.0
+        self.rear_width_mm = 375.0
+        self.ers_deploy_rate_mj_per_s = 0.35
         self.ers_boost_deploy_multiplier = 1.5
-        self.ers_harvest_rate_mj_per_s = 0.5
+        self.ers_harvest_rate_mj_per_s = 0.35
+        self.front_spring_rate_n_per_m = 120000.0
+        self.rear_spring_rate_n_per_m = 140000.0
+        self.front_damping_compression = 80000.0
+        self.front_damping_rebound = 120000.0
+        self.rear_damping_compression = 90000.0
+        self.rear_damping_rebound = 130000.0
+        self.front_anti_roll_bar_nm_per_rad = 50000.0
+        self.rear_anti_roll_bar_nm_per_rad = 60000.0
+        self.suspension_max_travel_mm = 100.0
+        self.bump_stop_stiffness_n_per_m = 500000.0
+        self.ride_height_min_mm = 20.0
+        self.ride_height_max_mm = 50.0
 
 
 class VehicleState:
@@ -86,6 +98,18 @@ class VehicleState:
         self.fuel_mass_kg = 100.0
         self.active_aero_transition_timer_ms = 0.0
         self.active_aero_failed = False
+        self.suspension_travel_fl_mm = 0.0
+        self.suspension_travel_fr_mm = 0.0
+        self.suspension_travel_rl_mm = 0.0
+        self.suspension_travel_rr_mm = 0.0
+        self.ride_height_fl_mm = 20.0
+        self.ride_height_fr_mm = 20.0
+        self.ride_height_rl_mm = 20.0
+        self.ride_height_rr_mm = 20.0
+        self.suspension_velocity_fl_m_per_s = 0.0
+        self.suspension_velocity_fr_m_per_s = 0.0
+        self.suspension_velocity_rl_m_per_s = 0.0
+        self.suspension_velocity_rr_m_per_s = 0.0
 
 
 class VehicleInput:
@@ -162,6 +186,7 @@ class VehicleDynamics:
         self._update_ers(dt, inp)
         self._update_active_aero(dt, inp)
         self._update_fuel(dt, inp.throttle, inp.brake)
+        self._update_suspension(dt, acceleration, total_mass)
 
         self.state.rng_state = self.rng._state
 
@@ -232,6 +257,82 @@ class VehicleDynamics:
         if new_fuel_mass < min_mass:
             new_fuel_mass = min_mass
         self.state.fuel_mass_kg = new_fuel_mass
+
+    def _update_suspension(self, dt, acceleration, total_mass):
+        static_ride_height_m = self.cfg.ride_height_min_mm / 1000.0
+        static_heights = [static_ride_height_m] * 4
+
+        load_transfer_per_wheel = (total_mass * acceleration * 0.5) / 4.0 * 0.1
+        load_transfer = [-load_transfer_per_wheel, -load_transfer_per_wheel,
+                          load_transfer_per_wheel, load_transfer_per_wheel]
+
+        current_heights = [
+            self.state.ride_height_fl_mm / 1000.0,
+            self.state.ride_height_fr_mm / 1000.0,
+            self.state.ride_height_rl_mm / 1000.0,
+            self.state.ride_height_rr_mm / 1000.0
+        ]
+        velocities = [
+            self.state.suspension_velocity_fl_m_per_s,
+            self.state.suspension_velocity_fr_m_per_s,
+            self.state.suspension_velocity_rl_m_per_s,
+            self.state.suspension_velocity_rr_m_per_s
+        ]
+        spring_rates = [
+            self.cfg.front_spring_rate_n_per_m, self.cfg.front_spring_rate_n_per_m,
+            self.cfg.rear_spring_rate_n_per_m, self.cfg.rear_spring_rate_n_per_m
+        ]
+        dampers = [
+            self.cfg.front_damping_compression, self.cfg.front_damping_compression,
+            self.cfg.rear_damping_compression, self.cfg.rear_damping_compression
+        ]
+        dampers_rebound = [
+            self.cfg.front_damping_rebound, self.cfg.front_damping_rebound,
+            self.cfg.rear_damping_rebound, self.cfg.rear_damping_rebound
+        ]
+
+        for i in range(4):
+            equilibrium_height = static_heights[i] - load_transfer[i] / spring_rates[i]
+            displacement = current_heights[i] - equilibrium_height
+            travel_mm = displacement * 1000.0
+
+            spring_force = spring_rates[i] * displacement
+            damper_force = dampers[i] * velocities[i] if velocities[i] > 0.0 else dampers_rebound[i] * velocities[i]
+            bump_stop_force = 0.0
+
+            if travel_mm > self.cfg.suspension_max_travel_mm:
+                excess = travel_mm - self.cfg.suspension_max_travel_mm
+                bump_stop_force = self.cfg.bump_stop_stiffness_n_per_m * (excess / 1000.0)
+            elif travel_mm < 0.0:
+                travel_mm = 0.0
+
+            mass_per_wheel = total_mass * self.cfg.gravity_m_per_s2 / 4.0
+            total_force = spring_force + damper_force + bump_stop_force
+            accel_local = total_force / mass_per_wheel
+
+            velocities[i] += accel_local * dt
+            current_heights[i] += velocities[i] * dt
+
+            new_travel_mm = (current_heights[i] - static_heights[i]) * 1000.0
+            new_travel_mm = max(0.0, min(new_travel_mm, self.cfg.suspension_max_travel_mm))
+            new_ride_height_mm = static_ride_height_m * 1000.0 + new_travel_mm
+
+            if i == 0:
+                self.state.suspension_travel_fl_mm = new_travel_mm
+                self.state.ride_height_fl_mm = new_ride_height_mm
+                self.state.suspension_velocity_fl_m_per_s = velocities[i]
+            elif i == 1:
+                self.state.suspension_travel_fr_mm = new_travel_mm
+                self.state.ride_height_fr_mm = new_ride_height_mm
+                self.state.suspension_velocity_fr_m_per_s = velocities[i]
+            elif i == 2:
+                self.state.suspension_travel_rl_mm = new_travel_mm
+                self.state.ride_height_rl_mm = new_ride_height_mm
+                self.state.suspension_velocity_rl_m_per_s = velocities[i]
+            elif i == 3:
+                self.state.suspension_travel_rr_mm = new_travel_mm
+                self.state.ride_height_rr_mm = new_ride_height_mm
+                self.state.suspension_velocity_rr_m_per_s = velocities[i]
 
     def _handle_auto_gear(self, inp):
         target_gear = max(0, min(inp.gear, len(self.cfg.gear_ratios)))

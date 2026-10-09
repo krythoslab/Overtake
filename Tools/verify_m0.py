@@ -82,11 +82,27 @@ class Pu:
         self.MguKOvertakeMaxPower_kW = 350.0
         self.MguKHarvestMax_kW = 350.0
         self.HarvestLimit_MJ_perLap = 8.5
+        self.HarvestLimitWithOvertake_MJ_perLap = 9.0
         self.BatteryCapacity_MJ = 4.5
         self.BatterySoCDeltaLimit_MJ = 4.0
+        self.DeployRate_MJ_per_s = 0.35
+        self.HarvestRate_MJ_per_s = 0.35
+        self.BoostDeployMultiplier = 1.5
         self.FuelEnergyFlowMax_MJ_per_h = 3000.0
         self.FuelFlowRpmCurve = "0.27 * rpm + 165"
+        self.FuelFlowRpmCurveMaxRpm = 10500.0
         self.HasMguH = False
+
+class Suspension:
+    def __init__(self):
+        self.SpringRate_N_per_m = 120000.0
+        self.DamperCompression_N_per_m = 80000.0
+        self.DamperRebound_N_per_m = 120000.0
+        self.AntiRollBarStiffness_Nm_per_rad = 50000.0
+        self.MaxTravel_mm = 100.0
+        self.BumpStopStiffness_N_per_m = 500000.0
+        self.RideHeight_min_mm = 20.0
+        self.RideHeight_max_mm = 50.0
 
 class Dynamics:
     def __init__(self):
@@ -122,8 +138,9 @@ class VehicleSpec:
         self.Aero.RearTransitionTime_ms = 50.0
         self.Dynamics = Dynamics()
         self.Tires = type('Tires', (), {})()
-        self.Tires.FrontWidth_mm = 270.0
-        self.Tires.RearWidth_mm = 355.0
+        self.Tires.FrontWidth_mm = 280.0
+        self.Tires.RearWidth_mm = 375.0
+        self.Suspension = Suspension()
         self.Fidelity = type('Fidelity', (), {})()
         self.Fidelity.TireModel = "pacejka89"
         self.Fidelity.TireThermalNodes = 1
@@ -143,11 +160,16 @@ class RegulationProfile:
         self.Ers.MguKMaxPower_kW = 350.0
         self.Ers.HarvestMaxPower_kW = 350.0
         self.Ers.HarvestLimit_MJ_perLap = 8.5
+        self.Ers.HarvestLimitWithOvertake_MJ_perLap = 9.0
         self.Ers.BatterySoCDeltaLimit_MJ = 4.0
+        self.Ers.DeployRate_MJ_per_s = 0.35
+        self.Ers.HarvestRate_MJ_per_s = 0.35
+        self.Ers.BoostDeployMultiplier = 1.5
         self.Pu = type('Pu', (), {})()
         self.Pu.IceMaxPower_kW = 400.0
         self.Pu.FuelEnergyFlowMax_MJ_per_h = 3000.0
         self.Pu.FuelFlowRpmCurve = "0.27 * rpm + 165"
+        self.Pu.FuelFlowRpmCurveMaxRpm = 10500.0
         self.Pu.HasMguH = False
         self.Aero = type('Aero', (), {})()
         self.Aero.CornerModeDownforceCoeff = 1.0
@@ -158,13 +180,21 @@ class RegulationProfile:
         self.Aero.RearTransitionTime_ms = 50.0
         self.Dynamics = Dynamics()
         self.Tires = type('Tires', (), {})()
-        self.Tires.FrontWidth_mm = 270.0
-        self.Tires.RearWidth_mm = 355.0
+        self.Tires.FrontWidth_mm = 280.0
+        self.Tires.RearWidth_mm = 375.0
         self.Sprint = type('Sprint', (), {})()
         self.Sprint.Sq1Duration_s = 720.0
         self.Sprint.Sq2Duration_s = 600.0
         self.Sprint.Sq3Duration_s = 480.0
         self.Sprint.Sq3CarCount = 10
+        self.Sprint.Sq1EliminationCount = 6
+        self.Sprint.Sq2EliminationCount = 6
+        self.RaceQualifying = type('RaceQualifying', (), {})()
+        self.RaceQualifying.Q1Duration_s = 1080.0
+        self.RaceQualifying.Q2Duration_s = 900.0
+        self.RaceQualifying.Q3Duration_s = 780.0
+        self.RaceQualifying.EliminationPerRound = 5
+        self.Suspension = Suspension()
 
 # ---------------------------------------------------------------------------
 # VehicleConfig factory
@@ -188,12 +218,42 @@ class VehicleConfig:
         self.Gravity_m_per_s2 = 9.81
         self.MaxAcceleration_m_per_s2 = 8.0
         self.BatteryCapacity_MJ = 4.5
+        self.MguKMaxPower_kW = 350.0
+        self.MguKOvertakeMaxPower_kW = 350.0
+        self.MguKHarvestMax_kW = 350.0
+        self.HarvestLimit_MJ_perLap = 8.5
+        self.HarvestLimitWithOvertake_MJ_perLap = 9.0
+        self.BatterySoCDeltaLimit_MJ = 4.0
+        self.FuelEnergyFlowMax_MJ_per_h = 3000.0
+        self.FuelFlowRpmCurveMaxRpm = 10500.0
+        self.HasMguH = False
+        self.ERSDeployRate_MJ_per_s = 0.35
+        self.ERSBoostDeployMultiplier = 1.5
+        self.ERSHarvestRate_MJ_per_s = 0.35
+        self.FrontWidth_mm = 280.0
+        self.RearWidth_mm = 375.0
+        self.FrontSpringRate_N_per_m = 120000.0
+        self.RearSpringRate_N_per_m = 140000.0
+        self.FrontDampingCompression = 80000.0
+        self.FrontDampingRebound = 120000.0
+        self.RearDampingCompression = 90000.0
+        self.RearDampingRebound = 130000.0
+        self.FrontAntiRollBarNm_per_rad = 50000.0
+        self.RearAntiRollBarNm_per_rad = 60000.0
+        self.SuspensionMaxTravel_mm = 100.0
+        self.BumpStopStiffness_N_per_m = 500000.0
+        self.RideHeight_min_mm = 20.0
+        self.RideHeight_max_mm = 50.0
 
 def create_config(spec: VehicleSpec, regs: RegulationProfile) -> VehicleConfig:
     sD = spec.Dynamics
     rD = regs.Dynamics
     sPu = spec.Pu
     rPu = regs.Pu
+    rErs = regs.Ers
+    rSusp = regs.Suspension
+    sTires = spec.Tires
+    rTires = regs.Tires
 
     def val(sv, rv):
         return sv if sv != 0.0 else rv
@@ -216,6 +276,32 @@ def create_config(spec: VehicleSpec, regs: RegulationProfile) -> VehicleConfig:
     cfg.Gravity_m_per_s2 = val(sD.Gravity_m_per_s2, rD.Gravity_m_per_s2)
     cfg.MaxAcceleration_m_per_s2 = val(sD.MaxAcceleration_m_per_s2, rD.MaxAcceleration_m_per_s2)
     cfg.BatteryCapacity_MJ = sPu.BatteryCapacity_MJ
+    cfg.MguKMaxPower_kW = val(sPu.MguKMaxPower_kW, rErs.MguKMaxPower_kW)
+    cfg.MguKOvertakeMaxPower_kW = val(sPu.MguKOvertakeMaxPower_kW, rErs.MguKMaxPower_kW)
+    cfg.MguKHarvestMax_kW = val(sPu.MguKHarvestMax_kW, rErs.HarvestMaxPower_kW)
+    cfg.HarvestLimit_MJ_perLap = val(sPu.HarvestLimit_MJ_perLap, rErs.HarvestLimit_MJ_perLap)
+    cfg.HarvestLimitWithOvertake_MJ_perLap = val(sPu.HarvestLimitWithOvertake_MJ_perLap, rErs.HarvestLimitWithOvertake_MJ_perLap)
+    cfg.BatterySoCDeltaLimit_MJ = val(sPu.BatterySoCDeltaLimit_MJ, rErs.BatterySoCDeltaLimit_MJ)
+    cfg.FuelEnergyFlowMax_MJ_per_h = val(sPu.FuelEnergyFlowMax_MJ_per_h, rPu.FuelEnergyFlowMax_MJ_per_h)
+    cfg.FuelFlowRpmCurveMaxRpm = val(sPu.FuelFlowRpmCurveMaxRpm, rPu.FuelFlowRpmCurveMaxRpm)
+    cfg.HasMguH = sPu.HasMguH
+    cfg.ERSDeployRate_MJ_per_s = val(sPu.DeployRate_MJ_per_s, rErs.DeployRate_MJ_per_s)
+    cfg.ERSBoostDeployMultiplier = val(sPu.BoostDeployMultiplier, rErs.BoostDeployMultiplier)
+    cfg.ERSHarvestRate_MJ_per_s = val(sPu.HarvestRate_MJ_per_s, rErs.HarvestRate_MJ_per_s)
+    cfg.FrontWidth_mm = val(getattr(sTires, 'FrontWidth_mm', 0.0), rTires.FrontWidth_mm)
+    cfg.RearWidth_mm = val(getattr(sTires, 'RearWidth_mm', 0.0), rTires.RearWidth_mm)
+    cfg.FrontSpringRate_N_per_m = rSusp.SpringRate_N_per_m
+    cfg.RearSpringRate_N_per_m = rSusp.SpringRate_N_per_m
+    cfg.FrontDampingCompression = rSusp.DamperCompression_N_per_m
+    cfg.FrontDampingRebound = rSusp.DamperRebound_N_per_m
+    cfg.RearDampingCompression = rSusp.DamperCompression_N_per_m
+    cfg.RearDampingRebound = rSusp.DamperRebound_N_per_m
+    cfg.FrontAntiRollBarNm_per_rad = rSusp.AntiRollBarStiffness_Nm_per_rad
+    cfg.RearAntiRollBarNm_per_rad = rSusp.AntiRollBarStiffness_Nm_per_rad
+    cfg.SuspensionMaxTravel_mm = rSusp.MaxTravel_mm
+    cfg.BumpStopStiffness_N_per_m = rSusp.BumpStopStiffness_N_per_m
+    cfg.RideHeight_min_mm = rSusp.RideHeight_min_mm
+    cfg.RideHeight_max_mm = rSusp.RideHeight_max_mm
     return cfg
 
 def validate_config(cfg: VehicleConfig):
@@ -251,6 +337,16 @@ def validate_config(cfg: VehicleConfig):
         raise ValueError("MaxAcceleration_m_per_s2 must be positive.")
     if cfg.BatteryCapacity_MJ < 0:
         raise ValueError("BatteryCapacity_MJ must be non-negative.")
+    if cfg.ERSDeployRate_MJ_per_s < 0:
+        raise ValueError("ERSDeployRate_MJ_per_s must be non-negative.")
+    if cfg.ERSBoostDeployMultiplier < 0:
+        raise ValueError("ERSBoostDeployMultiplier must be non-negative.")
+    if cfg.ERSHarvestRate_MJ_per_s < 0:
+        raise ValueError("ERSHarvestRate_MJ_per_s must be non-negative.")
+    if cfg.FrontWidth_mm <= 0:
+        raise ValueError("FrontWidth_mm must be positive.")
+    if cfg.RearWidth_mm <= 0:
+        raise ValueError("RearWidth_mm must be positive.")
 
 # ---------------------------------------------------------------------------
 # Simulation Loop
@@ -621,9 +717,87 @@ def test_rng_state_evolves():
         return False
     return True
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+def test_ers_deploy_rate_sourced_from_regulation():
+    print("Test: ERS deploy rate sourced from RegulationProfile (not hard-coded)")
+    spec = create_spec()
+    regs = create_regs()
+    cfg = create_config(spec, regs)
+    validate_config(cfg)
+
+    if not approx_equal(cfg.ERSDeployRate_MJ_per_s, 0.35, 1e-5):
+        print(f"  FAIL: Deploy rate should be 0.35 MJ/s (350 kW), got {cfg.ERSDeployRate_MJ_per_s}")
+        return False
+    print(f"  Deploy rate = {cfg.ERSDeployRate_MJ_per_s} MJ/s (350 kW) — correct")
+    return True
+
+def test_tyre_widths_2026():
+    print("Test: Tyre widths match 2026 Pirelli specification")
+    spec = create_spec()
+    regs = create_regs()
+    cfg = create_config(spec, regs)
+
+    if cfg.FrontWidth_mm != 280.0:
+        print(f"  FAIL: Front width should be 280mm, got {cfg.FrontWidth_mm}")
+        return False
+    if cfg.RearWidth_mm != 375.0:
+        print(f"  FAIL: Rear width should be 375mm, got {cfg.RearWidth_mm}")
+        return False
+    return True
+
+def test_race_qualifying_config():
+    print("Test: Race Qualifying config present in RegulationProfile")
+    regs = create_regs()
+    if regs.RaceQualifying.Q1Duration_s != 1080.0:
+        print(f"  FAIL: Q1 should be 1080s, got {regs.RaceQualifying.Q1Duration_s}")
+        return False
+    if regs.RaceQualifying.Q2Duration_s != 900.0:
+        print(f"  FAIL: Q2 should be 900s, got {regs.RaceQualifying.Q2Duration_s}")
+        return False
+    if regs.RaceQualifying.Q3Duration_s != 780.0:
+        print(f"  FAIL: Q3 should be 780s, got {regs.RaceQualifying.Q3Duration_s}")
+        return False
+    if regs.RaceQualifying.EliminationPerRound != 5:
+        print(f"  FAIL: Elimination should be 5, got {regs.RaceQualifying.EliminationPerRound}")
+        return False
+    return True
+
+def test_sprint_elimination_counts():
+    print("Test: Sprint elimination counts present in RegulationProfile")
+    regs = create_regs()
+    if regs.Sprint.Sq1EliminationCount != 6:
+        print(f"  FAIL: SQ1 elimination should be 6, got {regs.Sprint.Sq1EliminationCount}")
+        return False
+    if regs.Sprint.Sq2EliminationCount != 6:
+        print(f"  FAIL: SQ2 elimination should be 6, got {regs.Sprint.Sq2EliminationCount}")
+        return False
+    return True
+
+def test_suspension_config_present():
+    print("Test: Suspension config present in RegulationProfile and VehicleSpec")
+    regs = create_regs()
+    cfg = create_config(create_spec(), regs)
+    if cfg.SuspensionMaxTravel_mm <= 0:
+        print("  FAIL: SuspensionMaxTravel_mm must be positive.")
+        return False
+    if cfg.FrontSpringRate_N_per_m <= 0:
+        print("  FAIL: FrontSpringRate must be positive.")
+        return False
+    if cfg.RideHeight_min_mm <= 0:
+        print("  FAIL: RideHeight_min_mm must be positive.")
+        return False
+    return True
+
+def test_harvest_limit_with_overtake():
+    print("Test: Harvest limit with Overtake Mode (9.0 MJ/lap)")
+    regs = create_regs()
+    if regs.Ers.HarvestLimitWithOvertake_MJ_perLap != 9.0:
+        print(f"  FAIL: Should be 9.0, got {regs.Ers.HarvestLimitWithOvertake_MJ_perLap}")
+        return False
+    cfg = create_config(create_spec(), regs)
+    if cfg.HarvestLimitWithOvertake_MJ_perLap != 9.0:
+        print(f"  FAIL: Config should be 9.0, got {cfg.HarvestLimitWithOvertake_MJ_perLap}")
+        return False
+    return True
 def main():
     tests = [
         test_identical_inputs_and_seed,
@@ -635,6 +809,12 @@ def main():
         test_zero_throttle_slows,
         test_braking_reduces_speed,
         test_rng_state_evolves,
+        test_ers_deploy_rate_sourced_from_regulation,
+        test_tyre_widths_2026,
+        test_race_qualifying_config,
+        test_sprint_elimination_counts,
+        test_suspension_config_present,
+        test_harvest_limit_with_overtake,
     ]
 
     passed = 0
