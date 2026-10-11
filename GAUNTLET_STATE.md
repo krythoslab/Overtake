@@ -54,10 +54,22 @@ Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-40). Iteration 1 summary: 3 in
 
 ## 5. Exact next actions
 
-1. **Iteration 2 re-audit**: dispatch 2–3 fresh independent reviewers (no prior context) on the corrected blueprint; rubric = verify D-01…D-40 corrections are real and find NEW defects.
-2. Triage new findings → DEFECTS.md (D-41+); RCA + corrections + regression check.
-3. Repeat until gate: zero unresolved critical/high across two consecutive fresh reviews.
-4. Final: update GAUNTLET_STATE + REVIEW_LOG; commit; record final hash.
+1. **CLOSED** — final commit `4fbefe2` ("docs: comprehensive master blueprint…"). All artifacts committed; internal link check passes.
+2. If resuming: completion gate is met (0 unresolved critical/high across 3 independent rounds; AC-1…AC-7 verified). Remaining work is production-phase only: M1 business case + FTO opinion + FIA full-text verification (U-03/U-04) + Korean agent decision (R-07) + SDR eligibility gate (R-16) — none of which can be advanced from public sources alone.
+
+## 5b. Completion gate status
+
+| Acceptance criterion | Status | Evidence |
+|---|---|---|
+| AC-1 Requirements coverage | PASS | §3 traceability; F/N mapped to sections |
+| AC-2 Evidence | PASS | docs/10-research + SOURCES.md (S-01…S-45, dated, tiered) |
+| AC-3 Consistency | PASS | regression checks iter 1–3; link check green |
+| AC-4 Feasibility | PASS | targets tiered/assumption-flagged; infeasible claims corrected (D-42/62) |
+| AC-5 Adversarial review | PASS | 8 independent reviewers, 3 rounds; 68 defects, 67 fixed + 1 accepted-with-note; 0 unresolved C/H in final round |
+| AC-6 Unknowns | PASS | §19 U-01…U-10 + risks R-01…R-22 |
+| AC-7 Deliverables + hash | PASS | commit `4fbefe2` |
+
+**Iteration 1 final answer:** gate satisfied on 2026-10-11 with final commit `4fbefe2260eceee805e6dbb74fc43d78fbe52b9c`. Documented irreducible unknowns (license terms, 2028 regs, curve full-text check, Korea agent cost, SDR eligibility) cannot be resolved from public sources and are honestly registered rather than guessed.
 
 ## 6. Iteration history
 
