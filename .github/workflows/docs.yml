@@ -1,0 +1,24 @@
+name: docs
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify internal Markdown links resolve
+        run: |
+          fail=0
+          for f in $(find . -name '*.md' -not -path './.git/*'); do
+            dir=$(dirname "$f")
+            grep -oE '\]\(([^)#]+\.md)(#[^)]*)?\)' "$f" | sed -E 's/\]\(([^)#]+).*/\1/' | while read -r link; do
+              target="$dir/$link"
+              if [ ! -f "$target" ]; then echo "BROKEN: $f -> $link"; fail=1; fi
+            done
+          done
+          exit $fail
