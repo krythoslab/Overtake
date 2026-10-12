@@ -11,14 +11,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify internal Markdown links resolve
+      - name: Verify internal document references resolve
         run: |
+          set -uo pipefail
           fail=0
-          for f in $(find . -name '*.md' -not -path './.git/*'); do
+          checked=0
+          root=$(pwd)
+          # NOTE: every `while` loop below reads from process substitution.
+          # The previous version piped into `while`, which runs the loop body in
+          # a SUBSHELL, so `fail=1` never reached the parent shell and `exit $fail`
+          # always exited 0 (a green check on a broken repo).
+          while IFS= read -r f; do
             dir=$(dirname "$f")
-            grep -oE '\]\(([^)#]+\.md)(#[^)]*)?\)' "$f" | sed -E 's/\]\(([^)#]+).*/\1/' | while read -r link; do
-              target="$dir/$link"
-              if [ ! -f "$target" ]; then echo "BROKEN: $f -> $link"; fail=1; fi
-            done
-          done
-          exit $fail
+
+            # (1) Markdown inline links: [text](relative/path.md#anchor)
+            while IFS= read -r link; do
+              case "$link" in
+                http://*|https://*|mailto:*|"") continue ;;
+              esac
+              checked=$((checked + 1))
+              if [ ! -f "$dir/$link" ]; then
+                echo "BROKEN (inline link): $f -> $link"
+                fail=1
+              fi
+            done < <(grep -oE '\]\([^)]+\.md([#?][^)]*)?\)' "$f" 2>/dev/null \
+                     | sed -E 's/^\]\(//; s/\)$//; s/[#?].*$//' | sort -u)
+
+            # (2) Backtick-quoted repo-relative document paths (`docs/.../X.md`),
+            # which is the dominant reference style in this blueprint repo.
+            # Resolved against the repo root first, then the file's own directory.
+            while IFS= read -r link; do
+              case "$link" in
+                http://*|https://*|mailto:*|"") continue ;;
+              esac
+              checked=$((checked + 1))
+              if [ -f "$root/$link" ] || [ -f "$dir/$link" ]; then
+                continue
+              fi
+              echo "BROKEN (document path): $f -> $link"
+              fail=1
+            done < <(grep -oE '`[^`]+/[^`]+\.md`' "$f" 2>/dev/null | tr -d '`' | sort -u)
+          done < <(find . -name '*.md' -not -path './.git/*' | sort)
+
+          echo "Checked $checked internal document reference(s)."
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::internal document reference check failed"
+            exit 1
+          fi
+          echo "All internal document references resolve."
