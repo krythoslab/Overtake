@@ -16,7 +16,7 @@ Blueprint-only repository (no code, by mission constraint).
 
 ## Research dossiers (evidence)
 
-- `docs/10-research/SOURCES.md` — full source register with dates and tiers.
+- `docs/10-research/SOURCES.md` — full source register: publisher, date, tier, and a direct `https://` URL for every load-bearing entry (URLs fetched and verified 2026-10-12; entries whose URL could not be re-verified are flagged and REPORTED-only).
 - `docs/10-research/R1-regulations.md` — 2026–2028 regulations dossier.
 - `docs/10-research/R2-licensing-commercial-tech.md` — licensing, engine, store economics.
 - `docs/10-research/R3-multiplayer-performance.md` — netcode and performance feasibility evidence.

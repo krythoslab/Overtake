@@ -6,9 +6,9 @@
 
 | ID | Requirement |
 |----|-------------|
-| F-01 | Vehicle simulation faithful to the ratified 2026–2028 rule set (power unit/ERS, active aero, masses, tyres), expressed as data-driven regulation profiles, not hard-coded season logic. |
+| F-01 | Vehicle simulation faithful to the ratified 2026–2028 rule set (power unit/ERS incl. the WMSC-ratified 2027–2028 rebalance, active aero, masses, tyres), expressed as data-driven regulation profiles, not hard-coded season logic. |
 | F-02 | Race systems: qualifying, sprint, race, safety car/VSC, red flags, penalties, classification, championship points — matching FIA 2026/2027 sporting regulations where stated. |
-| F-03 | Overtake mechanic (DRS replacement) modeled per 2026 rules: detection/activation lines, event-specific gap, +0.5 MJ harvest, speed-dependent deploy limits, disabled under SC/low grip. |
+| F-03 | Overtake mechanic (DRS replacement) modeled per 2026 rules: detection/activation lines, event-specific gap, +0.5 MJ harvest, speed-dependent deploy limits, the 350 kW designated-acceleration-zone / 250 kW elsewhere MGU-K envelope, and per-event power-limited periods — disabled under SC/low grip. |
 | F-04 | AI opponents with racing line, energy/tyre strategy, overtaking and defense behavior, graduated difficulty. |
 | F-05 | Track system with authoring pipeline and format spec; content calendar mapping 2026/2027 confirmed rounds and 2028 placeholder. |
 | F-06 | Career mode with season, progression, teams/drivers (fictional), contract and R&D loops. |
@@ -35,12 +35,18 @@
 The blueprint is DONE when all pass:
 
 - **AC-1 Requirements coverage**: every F/N requirement has a design section, with platform-spanning decisions (Steam/iOS/Android) addressed.
-- **AC-2 Evidence**: every load-bearing factual claim carries a confidence tier + traceable source with publication date; a source register exists; no fabricated citations.
+- **AC-2 Evidence**: every load-bearing factual claim carries a confidence tier + traceable source with publication date **and a direct URL** (see `docs/10-research/SOURCES.md`); a source register exists; no fabricated citations. Entries whose URL could not be re-verified are explicitly flagged and may not drive a default.
 - **AC-3 Consistency**: no internal contradictions between sections (terms, numbers, architecture); single glossary.
 - **AC-4 Feasibility**: performance/multiplayer/schedule/budget claims are either evidence-backed or explicitly ASSUMPTION with sensitivity notes; no infeasible targets (e.g., full-bit lockstep across 22 mobile cars).
 - **AC-5 Adversarial review**: ≥2 independent adversarial reviews (fresh context each) find no unresolved critical/high defects; medium defects either fixed or accepted with risk note.
 - **AC-6 Completeness of unknowns**: every material unknown is enumerated with impact + resolution plan and owner; no silence.
 - **AC-7 Deliverables**: MASTER_BLUEPRINT.md + research dossiers + design docs + GAUNTLET_STATE.md + review log + final commit hash.
+
+## R0.5 Definition of Done for the documentation tooling
+
+- The GitHub Actions `docs` workflow must **fail the job** when any internal document reference is broken (it previously could not fail because the accumulator was set inside a pipeline subshell — see DEFECTS D-73).
+- The checker must cover both reference styles used in this repo: Markdown inline links (text + a .md target in parentheses) and backtick-quoted repo-relative document paths.
+- Any CI gate must be demonstrable: a broken-link fixture must exit non-zero and a valid fixture must exit zero.
 
 ## R0.4 Definition of Done for this repo (blueprint-only)
 
