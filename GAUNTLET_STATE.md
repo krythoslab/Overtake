@@ -75,8 +75,8 @@ Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-83). Iteration 1 summary: 3 in
 | AC-7 Deliverables + hash | PASS | see commit hashes below |
 
 **Commit hashes (reconciled with `git log`)**:
-- Iteration 1–3 close-out: `4fbefe2` ("docs: close gauntlet gate — completion status in GAUNTLET_STATE") = `4fbefe2260eceee805e6dbb74fc43d78fbe52b9c`.
-- Iteration 4–5 corrections (all content, tooling, source-register and bookkeeping fixes in this file's companion documents): recorded in the close-out commit immediately following it, which also re-syncs `GAUNTLET_STATE.md` and `docs/90-gauntlet/REVIEW_LOG.md`. Run `git log --oneline` for the authoritative list; `git rev-parse HEAD` is the tree this state file describes.
+- Iteration 1–3 close-out: `4fbefe2` ("docs: close gauntlet gate — completion status in GAUNTLET_STATE") = `4fbefe2260eceee805e6dbb74fc43d78fbe52b9c` (superseded in content, not in history).
+- **Iteration 4–5 corrections (content, tooling, source register, bookkeeping): `8e5041c`** (full hash `8e5041ce35b3c628134bb31380aebd936faff537`) — dated 2026-10-12, immediately after the close-out below.
 
 ## 6. Iteration history
 
@@ -90,3 +90,5 @@ Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-83). Iteration 1 summary: 3 in
 | 5 | 2026-10-12 | Independent re-audit of corrected sections + adjacent systems | 4 LOW findings (D-80…D-83) fixed; completion gate re-run and passing |
 
 (End of file - total 84 lines)
+
+_Close-out note (2026-10-12): `GAUNTLET_STATE.md` and `docs/90-gauntlet/REVIEW_LOG.md` were re-synced in the commit that follows the iteration 4–5 corrections commit above, so that both files record the hashes of the real repository history; `git log --oneline` is authoritative and `git rev-parse HEAD` is the tree this state file describes._
