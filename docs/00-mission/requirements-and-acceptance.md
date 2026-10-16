@@ -35,7 +35,7 @@
 The blueprint is DONE when all pass:
 
 - **AC-1 Requirements coverage**: every F/N requirement has a design section, with platform-spanning decisions (Steam/iOS/Android) addressed.
-- **AC-2 Evidence**: every load-bearing factual claim carries a confidence tier + traceable source with publication date **and a direct URL** (see `docs/10-research/SOURCES.md`); a source register exists; no fabricated citations. Entries whose URL could not be re-verified are explicitly flagged and may not drive a default.
+- **AC-2 Evidence**: every load-bearing factual claim carries a confidence tier + traceable source with publication date **and a direct URL** (see `docs/10-research/SOURCES.md`); a source register exists; no fabricated citations. Entries whose URL could not be re-verified are explicitly flagged and may not drive a default. Year-specific values (especially 2027/2028 zone-cap/event parameters) must include per-year confidence/sourceRef/verifiedOn/sourceVerified; unknown values remain explicitly unknown and are not silently inherited.
 - **AC-3 Consistency**: no internal contradictions between sections (terms, numbers, architecture); single glossary.
 - **AC-4 Feasibility**: performance/multiplayer/schedule/budget claims are either evidence-backed or explicitly ASSUMPTION with sensitivity notes; no infeasible targets (e.g., full-bit lockstep across 22 mobile cars).
 - **AC-5 Adversarial review**: ≥2 independent adversarial reviews (fresh context each) find no unresolved critical/high defects; medium defects either fixed or accepted with risk note.
