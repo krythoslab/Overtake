@@ -2,7 +2,7 @@
 ### A commercially releasable single-seater racing game for Steam, iOS, and Android
 
 **Status**: Design blueprint — pre-production
-**Date**: 2026-10-12 (iteration 5: regulation-currency correction — ratified 2027/2028 power-unit package and the 2026 designated-zone MGU-K envelope added; see `docs/90-gauntlet/DEFECTS.md` D-69…D-84)
+**Date**: 2026-10-12 (iteration 5: regulation-currency correction — ratified 2027/2028 power-unit package and the 2026 designated-zone MGU-K envelope added; AT-R2/AT-R4 made year-aware, envelope phrasing clarified, per-year profile metadata added, AT-D7 rewritten, not-re-verified sources barred from defaults; see `docs/90-gauntlet/DEFECTS.md` D-69…D-90)
 **Repo state**: blueprint-only (no code, by mission constraint)
 **Working title**: APEX (placeholder; trademark clearance required before announcement)
 
@@ -100,14 +100,14 @@ Requirements F-01…F-10, N-01…N-08 are defined in `docs/00-mission/requiremen
 | AT-D4 | Golden replay suite | ≥20 scripted scenarios (§16.1) replay bit-identically on Editor + device builds and across x86/ARM |
 | AT-D5 | Numerics contract | Unit tests pin round-half-to-even rounding, saturation detection, unit ranges, and transcendental iteration counts/tables |
 | AT-D6 | RNG isolation | Kernel state hash unchanged when the render layer is seeded differently; kernel RNG consumes exactly the documented number of draws per tick |
-| AT-D7 | Half-rate composition | Two 60 Hz steps composed == one 120 Hz step pair; proves the optional PC render-only mode cannot diverge |
+| AT-D7 | Fixed-tick render-independence (non-duplicative) | For the same tick sequence and same inputs at tick boundaries, rendering at 60/90/120 Hz (or with frame drops) produces identical kernel state checksums and identical authoritative outputs; composing two 60 Hz kernel ticks must equal one 120 Hz kernel tick only if both advance the kernel by the same logical time in the same tick steps - the test enforces render-only interpolation (no kernel advancement from render rate) and rejects any implementation where render rate changes kernel progression. |
 | AT-D8 | Static build gate | Emitted-code audit: no FMA contraction / auto-vectorized sim math; build fails on drift |
 
 ### 4.3 Data-driven regulation profiles (D-3)
 
 `RegulationProfile` (JSON/Addressables) holds: masses, PU limits, ERS curves, tyre compounds/sizes, aero modes, points tables, weekend formats, penalties, calendar. Switching profile = loading data. Engine code contains **no** season/year branching (mirrors the prior repo's documented philosophy — retained deliberately).
 
-**Profile manifest (normative field list; every field is data, none is a code constant)**
+**Profile manifest (normative field list; every field is data, none is a code constant). Year-specific fields carry metadata: confidence (CONFIRMED/RATIFIED-CHANGE/REPORTED/ASSUMPTION/UNKNOWN), sourceRef (S-#), verifiedOn (ISO date), and sourceVerified (bool). Values with confidence==UNKNOWN must remain explicit placeholders (not copied from other years); zone/event parameters (designatedAccelZone, nonDesignatedZone, powerLimitedDistanceM, sectorAltCurveZones, etc.) for 2027/2028 have confidence=UNKNOWN until U-03/U-11 land.**
 
 | Group | Fields |
 |---|---|
@@ -133,7 +133,7 @@ Requirements F-01…F-10, N-01…N-08 are defined in `docs/00-mission/requiremen
 
 ### 5.1 Regulation values (2026 profile defaults)
 
-Values trace to FIA documents cited; "Reported" = secondary source. The profile is data; these are defaults. 2026 rows quote article text from **Section C Issue 20 (2026-08-05)** and **2026 PU Technical Regulations Issue 06 (2024-03-29)**; 2027/2028 rows carry the **WMSC-ratified (2026-06-23) power-unit package** published as the 2027 Section C series (Iss 01 2026-06-25 → Iss 03 2026-10-01). Consolidated 2027/2028 constants remain subject to the U-03/U-04 full-text check.
+Values trace to FIA documents cited; "Reported" = secondary source. The profile is data; these are defaults. 2026 rows quote article text from **Section C Issue 20 (2026-08-05)** and **2026 PU Technical Regulations Issue 06 (2024-03-29)**; 2027/2028 rows carry the **WMSC-ratified (2026-06-23) power-unit package** published as the 2027 Section C series (Iss 01 2026-06-25 → Iss 03 2026-10-01). Consolidated 2027/2028 constants remain subject to the U-03/U-04 full-text check; zone-cap fields (designatedAccelZoneKw, nonDesignatedZoneKw) and any year-dependent zone/event parameters for 2027/2028 must be marked confidence=UNKNOWN, sourceVerified=false, with explicit sourceRef and verifiedOn until the consolidated text is read and article numbers cited (U-11). No silent inheritance from 2026.
 
 | Parameter | Value | Confidence | Source |
 |---|---|---|---|
@@ -197,12 +197,12 @@ Per 2026 Sporting Regs Art. B7.2 (Section B, Iss 09, 2026-10-01) and Tech Regs C
 
 1. Each track defines a **Detection Line** and **Activation Line** (game-track data; real-world analogues are event-published by the FIA — research reference: a mid-season 2026 event used Detection Gap 1.0 s with detection/activation lines in the final-corner sequence — REPORTED via Total Motorsport 2026-06-26).
 2. At the Detection Line, if gap to car ahead < **Detection Gap** (event value; default 1.0 s), the player's Overtake is **armed** and activates at the Activation Line, remaining active until the next Detection Line where the gap exceeds it.
-3. Active Overtake grants: harvest cap +0.5 MJ that lap (**8.5 → 9.0 MJ**, Art. C5.2.10 iii — CONFIRMED article text) and the alternate deploy curve (350 kW flat to 337 km/h vs taper from 290 km/h). Advantage opens at **290 km/h** (normal curve begins tapering there; both curves identical below), peaks ~+235 kW near 337 km/h, and persists to 355 km/h.
+3. Active Overtake grants: harvest cap +0.5 MJ that lap (**8.5 → 9.0 MJ**, Art. C5.2.10 iii — CONFIRMED article text) and the alternate deploy curve (350 kW flat to 337 km/h vs taper from 290 km/h). Advantage opens at **290 km/h** (normal curve begins tapering there; for 2026 both curves identical below; for 2027/2028 normal is capped at 300 kW so equality is year-dependent), peaks ~+235 kW near 337 km/h, and persists to 355 km/h.
 4. **Disabled for all cars** under Safety Car (restored only after every car has passed the line post-SC) and in **Low Grip Conditions** (wet). Leader (no car ahead in relevant gap context) gets no Overtake; defenders counter with manual **Boost** (stored-energy deployment, usable anywhere).
 5. In practice/qualifying ("lap time classified sessions") Overtake is enabled+active for all, no proximity test (per B7.2.3b as described in secondary analysis — REPORTED; real-world 2026 practice/qualifying runs on the Overtake curve — REPORTED via Total Motorsport 2026-06-26). Per-event FIA documents may also set **session energy allocations** (research reference: qualifying 6.0 MJ; FP/out-laps 8.5 MJ at a 2026 event — REPORTED) and power-limited periods; these are profile data.
 6. Detection Gap, line positions, session allocations, and SC/low-grip toggles are **profile data** so post-2026 tweaks (the FIA explicitly retained levers — Motorsport.com 2026-01-08) are content updates. Mid-2026 real-world changes (automated qualifying outlap deployment; scenario-specific 250 kW limits — REPORTED via ScuderiaFans 2026-05-19) are modeled as profile toggles, demonstrating why rules must not be code.
 
-**MGU-K deploy envelope (normative)** — the rules do not apply a single ceiling: the permitted ERS-K DC power is the **minimum of four independent, independently-parameterized limits**, evaluated every sim tick (each is a profile/event field, so the profile is the only thing that changes between 2026/2027/2028 and between events):
+**MGU-K deploy envelope (normative)** — the rules do not apply a single ceiling: the permitted ERS-K DC power is the **minimum of four independent, independently-parameterized limits** (P_ceiling(mode,year), P_speedCurve(v,mode), P_zone(v,s), P_powerLimitedPeriod(v,s)). Boost (+150 kW over the activation power level in race conditions) is a driver-initiated overlay, not a ceiling; Overtake ceiling is mode- and year-dependent (350 kW for Overtake in 2027/2028), so it must not be composed as a naive min with normal year ceilings. Evaluated every sim tick (each is a profile/event field, so the profile is the only thing that changes between 2026/2027/2028 and between events):
 
 ```
 P_allowed(v, mode, s) = min(
@@ -225,7 +225,7 @@ Interactions the kernel must implement and the tests must pin:
 
 - **Speed curve × year ceiling**: the ceiling is the binding term at low speed in 2027/2028 (300 kW normal), while in 2026 the *speed curve* binds first (350 kW is reached at 290 km/h). The simulator must not hard-code either; the profile supplies both tables, and the ceiling lookup must be mode-aware (see D-84 above).
 - **Speed curve × Overtake**: below 290 km/h the two curves are identical (both ≈1800−5v), so Overtake confers **no** advantage below the taper onset; the advantage band is 290 → 355 km/h, peaking ~+235 kW at 337 km/h. HUD must not display an advantage below 290 km/h.
-- **Overtake × year**: in 2027/2028 Overtake still reaches 350 kW while the normal ceiling is 300 kW, so the Overtake advantage band widens at mid-range speed (the whole 350 kW curve is available). AT-R2 must assert both branches.
+- **Overtake × year**: in 2027/2028 Overtake still reaches 350 kW while the normal ceiling is 300 kW; the curves diverge at low speeds (no equality below 290 km/h as in 2026) and the Overtake advantage band widens at mid-range speed (the whole 350 kW curve is available). AT-R2 and AT-R4 must assert year-specific branches using profile data.
 - **Overtake × zone cap**: when Overtake is active but the car is *outside* a designated acceleration zone, the 250 kW zone cap binds — Overtake is not a blanket upgrade. Zone membership is lap-distance/speed-threshold event data (per-event "Power Unit Information" docs publish the sectors).
 - **Overtake × power-limited period**: in a declared power-limited sector the FIA may permit a *greater* initial reduction and a reset of the reduction in named sectors (event data); the envelope is reduced, not raised. Penalties for exceeding the allowed power-reduction rate (kW/s) are ledger-level, not chassis-level.
 - **Boost × Overtake**: Boost is the defender's counter and is capped at **+150 kW** over the activation power level in race conditions; Overtake is disabled under SC and Low Grip Conditions, but Boost is not (it is the safety valve against power drop-off).
@@ -239,7 +239,7 @@ Interactions the kernel must implement and the tests must pin:
 | AT-R1 | Curve vs article text | Reconstructed curve matches Section C Iss 20 C5.2.8 i/ii at 0/200/290/337/340/345/350/355 km/h within 1 kW |
 | AT-R2 | Mode-aware ceiling switch | With only the year set to 2027 (no code change): peak normal deploy = 300 kW **and** peak Overtake deploy = 350 kW; a naive `min(year, overtake)` implementation that returns 300 kW in Overtake fails this test |
 | AT-R3 | Zone cap interaction | At 250 km/h inside a designated zone → 350 kW; at 250 km/h outside → 250 kW; with Overtake active outside a zone → still 250 kW |
-| AT-R4 | Overtake advantage band | Normal vs Overtake deploy equal below 290 km/h; maximum advantage ≈235 kW at 337 km/h; both 0 above their zero-speed (345 / 355) |
+| AT-R4 | Overtake advantage band (year-aware) | Year-specific: for 2026, normal and Overtake curves are identical below 290 km/h; for 2027/2028, normal is capped at 300 kW while Overtake remains 350 kW, so equality does not hold at low speed; test must load year-specific expected values from the regulation profile (max advantage ≈235 kW at 337 km/h, zero-speed 345/355 km/h). Curves reconstructed from profile data only. |
 | AT-R5 | Energy ledger | Per-lap recharge ≤ 8.5 MJ base, ≤ 9.0 MJ with active Overtake, ≤ 7.0 MJ when the event sets a qualifying limit; SoC window never exceeds 4 MJ; no deploy while SoC at minimum |
 | AT-R6 | Power-limited period | In a declared power-limited sector the envelope and reduction rate follow the event table; exceeding the rate is flagged by the ledger |
 | AT-R7 | Boost cap | Race Boost adds ≤150 kW over the activation level (or the current level if higher); Boost remains available under SC/Low Grip when Overtake is disabled |
@@ -546,7 +546,7 @@ Demo (Steam Next Fest + mobile beta via TestFlight/Play Internal→Closed), soft
 - Golden replays: ≥20 scripted scenarios (race starts, SC, low-grip, red flag, 22-car contact) deterministic across platforms; checksums in CI.
 - Determinism gates AT-D1…AT-D8 (§4.2): sim-frequency/render-frequency independence, input-rate independence, tick composition, numerics contract, RNG isolation, codegen audit.
 - Regulation conformance tests: points tables, SQ/Q elimination, classification, Overtake gating — table-driven against Section A/B extracts (snapshot tests against the ratified tables).
-- **Power-unit conformance tests AT-R1…AT-R8 (§5.4)**: MGU-K deploy envelope against Section C Iss 20 article text (C5.2.8/C5.2.10), the five-limit minimum (year ceiling × speed curve × designated zone × Overtake × power-limited period), the 2027/2028 ceiling switch, energy-ledger caps, and profile-only changeability. These run on every profile commit and on every regulation patch before ship (§15, §16.7).
+- **Power-unit conformance tests AT-R1…AT-R8 (§5.4)**: MGU-K deploy envelope against Section C Iss 20 article text (C5.2.8/C5.2.10), the four limits (P_ceiling(mode,year) × P_speedCurve × P_zone × P_powerLimitedPeriod), with Boost as a driver-initiated overlay (not a fifth ceiling), the 2027/2028 ceiling switch, energy-ledger caps, and profile-only changeability. These run on every profile commit and on every regulation patch before ship (§15, §16.7).
 - Performance envelope checks: lap-time targets within tolerance bands per archetype (ASSUMPTION bands from §5.2).
 
 ### 16.2 Multiplayer testing
@@ -616,7 +616,7 @@ Replays carry kernel-version + regulation-profile stamps; leaderboard archive en
 |---|---|---|---|---|
 | U-01 | EA/F1 license terms beyond 2027 | Private contracts | Track B feasibility only | None from outside; design remains Track A |
 | U-02 | 2028 calendar + non-PU regulations | Not published as of 2026-10-12 (2028 PU step *is* ratified) | Content roadmap tail | Watch WMSC/FIA releases; PU step already carried as data |
-| U-03 | Deploy-curve numeric constants | **Resolved for 2026**: Section C Iss 20 Art. C5.2.8 i/ii text verified verbatim (1800−5v / 6900−20v / 0; 7100−20v / 0) and C5.2.10 harvest caps verbatim. **Open for 2027/2028**: consolidated constants in the published 2027 Section C series (Iss 03, 2026-10-01) not yet cross-checked line-by-line | Balance tables; AT-R1 | Read 2027 Section C Iss 03 PDF at M1 and reconcile profile tables |
+| U-03 | Deploy-curve numeric constants + zone-cap year specificity | **Resolved for 2026**: Section C Iss 20 Art. C5.2.8 i/ii text verified verbatim (1800−5v / 6900−20v / 0; 7100−20v / 0) and C5.2.10 harvest caps verbatim; 2026 designated-zone 350/250 kW cap structure CONFIRMED (S-46). **Open for 2027/2028**: consolidated constants in 2027 Section C Iss 03 (2026-10-01) not yet cross-checked line-by-line. Zone-cap tables and any year-dependent zone/event parameters remain with **confidence=UNKNOWN** and **sourceVerified=false** until the consolidated text is read. No values silently inherited across years. | Balance tables; AT-R1, AT-R3 | Read 2027 Section C Iss 03 PDF at M1, quote article numbers for zone cap (U-11), record year-specific confidence/sourceRef/verifiedOn per profile field. |
 | U-04 | Full text of 2026 Iss 09 changes (2026-10-01) and 2027 Section A/B | Summary-level reporting | Rule details | Read FIA PDFs at M1; profile fields already parameterized |
 | U-11 | Article numbering for the 2026 designated-zone 350/250 kW MGU-K cap and the power-limited-period envelope in the consolidated 2026/2027 Section C text | FIA statement (2026-04-20) and per-event "Power Unit Information" documents are CONFIRMED, but the exact consolidated article numbers for the zone cap were not quoted from the PDF in this pass | AT-R2/AT-R3 traceability | Cite the article numbers when the full-text check (U-03) lands |
 | U-05 | Korea agent cost/lead time for GRAC PC classification | Vendor quotes pending | KR market decision | Greenlight decision (R-07/R-17) |
