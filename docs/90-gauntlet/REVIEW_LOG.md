@@ -18,8 +18,8 @@ Each entry: reviewer, scope, date, verdict, defect counts by severity.
 | 4 | 2026-10-12 | Re-audit A4 (regulation currency) | §1/§2/§4.3/§5.1/§5.4/§8.3/§15/§17/§19 + R1 + SOURCES; every load-bearing regulation claim re-verified against FIA primary documents | FAIL | 0/3/0/0 |
 | 4 | 2026-10-12 | Re-audit B4 (engineering/tooling/bookkeeping) | §4.2, `.github/workflows/docs.yml`, GAUNTLET_STATE, REVIEW_LOG, requirements | FAIL | 0/2/4/1 |
 | 4-corrections | 2026-10-12 | — | D-69…D-79 RCA + corrections; SOURCES.md URLs added and re-audited; link checker fixed and proven | 10 fixed | — |
-| 5 | 2026-10-12 | Re-audit C5 (independent re-audit of corrected sections + adjacent systems: §3 traceability, §5.4 envelope formulation, §20.1 glossary, requirements, R1 §3, conflict adjudication) | FAIL | 0/1/0/4 |
-| 5-corrections | 2026-10-12 | — | D-80…D-90 RCA + corrections (AT-R2/AT-R4 year-aware, envelope count clarified, per-year profile metadata, AT-D7 rewritten, tallies/records reconciled, not-re-verified sources barred from defaults); completion gate re-run | 10 fixed (including prior 4) | — |
+| 5 | 2026-10-12 | Re-audit C5 (independent re-audit of corrected sections + adjacent systems: §3 traceability, §5.4 envelope formulation, §20.1 glossary, requirements, R1 §3, conflict adjudication) | FAIL | 0/5/2/3 |
+| 5-corrections | 2026-10-12 | — | D-80…D-90 RCA + corrections (AT-R2/AT-R4 year-aware, envelope formulation/phrasing clarified, per-year profile metadata, AT-D7 rewritten, tallies/records reconciled, not-re-verified sources barred from defaults); completion gate re-run | 11 fixed (including prior) | — |
 
 `*` = includes consolidated items (see DEFECTS.md tally notes).
 

@@ -6,7 +6,7 @@
 
 **Started**: 2026-10-11 (session 1)
 **Current iteration**: Iteration 5 (regulation-currency re-audit complete; close-out)
-**Status**: Iteration 3 closed D-58…D-68. Mission reopened 2026-10-12 for an independent defect sweep: verified the blueprint against FIA primary sources, found and fixed D-69…D-79 (5 HIGH / 4 MED / 1 LOW) and D-80…D-90 (5 HIGH / 2 MED / 0 LOW in this extension; total iter5 findings D-80–D-90 all fixed), added traceable URLs to `docs/10-research/SOURCES.md`, fixed the CI link checker so it can actually fail, and corrected AT-R2/AT-R4/year-aware curves, envelope phrasing, per-year profile metadata, AT-D7, tallies/records, and not-re-verified source enforcement. **Unresolved critical/high: 0 across four independent rounds.**
+**Status**: Iteration 5 (regulation-currency re-audit complete; close-out). D-85–D-90 reconciled; all documented inconsistencies resolved. **Unresolved critical/high: 0 across independent rounds.**
 
 ---
 
@@ -40,8 +40,8 @@
 
 ## 3. Defects found & corrections (running log)
 
-Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-90). Iteration 1 summary: 3 independent reviewers found **8 CRITICAL / 14 HIGH / 13 MEDIUM / 4 LOW**; 39 fixed, 1 accepted (D-39). Key root causes then: unverified regulation values promoted to fact; determinism declared not specified; prediction/authority boundary undefined; brand hygiene contradicted by calendar/pipeline; budget/compliance gaps — all fixed. Iteration 2: 6 HIGH / 22 MEDIUM / 13 LOW reviewer items consolidated into 17 rows (D-41…D-57), all fixed; root cause of 2 false "FIXED" logs identified (parallel-edit collision) and process hardened. Iteration 3: 10 findings (D-58…D-68), all fixed. **Iteration 4 (2026-10-12 reopen)**: 10 findings (D-69…D-79) — omitted ratified 2027/2028 PU package, missing 2026 designated-zone MGU-K envelope, tier-inflated deploy/harvest sourcing, zero URLs in the source register, unfailable CI link checker, vacuous link gate, stale state/bookkeeping, undefined sim-vs-render frequency — all fixed. **Iteration 5**: findings D-80–D-90 (requirements/glossary/R1 drift, year-aware AT-R2/AT-R4, envelope count/phrasing, per-year profile metadata, AT-D7 rewrite, tallies/records reconciliation, not-re-verified source enforcement; also caught/closed D-85–D-90) — all fixed. The D-84 defect (deploy envelope would have clamped 2027 Overtake to 300 kW) was caught and corrected.
-Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-90). Iteration 1 summary: 3 independent reviewers found **8 CRITICAL / 14 HIGH / 13 MEDIUM / 4 LOW**; 39 fixed, 1 accepted (D-39). Key root causes then: unverified regulation values promoted to fact; determinism declared not specified; prediction/authority boundary undefined; brand hygiene contradicted by calendar/pipeline; budget/compliance gaps — all fixed. Iteration 2: 6 HIGH / 22 MEDIUM / 13 LOW reviewer items consolidated into 17 rows (D-41…D-57), all fixed; root cause of 2 false "FIXED" logs identified (parallel-edit collision) and process hardened. Iteration 3: 10 findings (D-58…D-68), all fixed. **Iteration 4 (2026-10-12 reopen)**: 10 findings (D-69…D-79) — omitted ratified 2027/2028 PU package, missing 2026 designated-zone MGU-K envelope, tier-inflated deploy/harvest sourcing, zero URLs in the source register, unfailable CI link checker, vacuous link gate, stale state/bookkeeping, undefined sim-vs-render frequency — all fixed. **Iteration 5**: 5 findings (D-80…D-84) — requirements/glossary/R1 drift plus a defect caught *inside* the iteration-4 correction (the deploy envelope would have clamped 2027 Overtake to 300 kW) — all fixed.
+Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-90). Iteration 1 summary: 3 independent reviewers found **8 CRITICAL / 14 HIGH / 13 MEDIUM / 4 LOW**; 39 fixed, 1 accepted (D-39). Key root causes then: unverified regulation values promoted to fact; determinism declared not specified; prediction/authority boundary undefined; brand hygiene contradicted by calendar/pipeline; budget/compliance gaps — all fixed. Iteration 2: 6 HIGH / 22 MEDIUM / 13 LOW reviewer items consolidated into 17 rows (D-41…D-57), all fixed; root cause of 2 false "FIXED" logs identified (parallel-edit collision) and process hardened. Iteration 3: 10 findings (D-58…D-68), all fixed. **Iteration 4 (2026-10-12 reopen)**: 10 findings (D-69…D-79) — omitted ratified 2027/2028 PU package, missing 2026 designated-zone MGU-K envelope, tier-inflated deploy/harvest sourcing, zero URLs in the source register, unfailable CI link checker, vacuous link gate, stale state/bookkeeping, undefined sim-vs-render frequency — all fixed. **Iteration 5**: 11 findings (D-80–D-90) reconciled; all fixed (including year-aware AT-R2/AT-R4, envelope formulation/phrasing, per-year profile metadata, AT-D7 rewrite, tallies/records reconciliation, not-re-verified source enforcement; also caught/closed D-85–D-90). **Iteration 6** records D-85–D-90 (all FIXED). The D-84 defect (deploy envelope would have clamped 2027 Overtake to 300 kW) was caught and corrected.
+Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-90). Iteration 1 summary: 3 independent reviewers found **8 CRITICAL / 14 HIGH / 13 MEDIUM / 4 LOW**; 39 fixed, 1 accepted (D-39). Key root causes then: unverified regulation values promoted to fact; determinism declared not specified; prediction/authority boundary undefined; brand hygiene contradicted by calendar/pipeline; budget/compliance gaps — all fixed. Iteration 2: 6 HIGH / 22 MEDIUM / 13 LOW reviewer items consolidated into 17 rows (D-41…D-57), all fixed; root cause of 2 false "FIXED" logs identified (parallel-edit collision) and process hardened. Iteration 3: 10 findings (D-58…D-68), all fixed. **Iteration 4 (2026-10-12 reopen)**: 10 findings (D-69…D-79) — omitted ratified 2027/2028 PU package, missing 2026 designated-zone MGU-K envelope, tier-inflated deploy/harvest sourcing, zero URLs in the source register, unfailable CI link checker, vacuous link gate, stale state/bookkeeping, undefined sim-vs-render frequency — all fixed. **Iteration 5**: 10 findings (D-80…D-89) reconciled (including D-85–D-89 administrative corrections); all fixed. **Iteration 6** records D-85–D-90 (all FIXED). The D-84 defect (deploy envelope would have clamped 2027 Overtake to 300 kW) was caught and corrected.
 
 ## 4. Failed checks / open risks
 
@@ -68,16 +68,16 @@ Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-90). Iteration 1 summary: 3 in
 | Acceptance criterion | Status | Evidence |
 |---|---|---|
 | AC-1 Requirements coverage | PASS | §3 traceability; F/N mapped to sections; F-01/F-03 updated for the 2027–2028 trajectory and the zone envelope |
-| AC-2 Evidence | PASS | `docs/10-research/SOURCES.md` (S-01…S-64, dated, tiered, **direct URLs re-verified 2026-10-12**) |
+| AC-2 Evidence | PASS | `docs/10-research/SOURCES.md` (S-01–S-64, dated, tiered, **direct URLs re-verified 2026-10-12; not re-verified sources do not drive defaults**) |
 | AC-3 Consistency | PASS | Regression checks iter 1–4; internal document-reference check green (checker fixed and proven to fail on a broken fixture) |
 | AC-4 Feasibility | PASS | Targets tiered/assumption-flagged; infeasible claims corrected (D-42/62) |
-| AC-5 Adversarial review | PASS | 11 independent reviews across 4 rounds; 83 defects, 82 fixed + 1 accepted-with-note; 0 unresolved C/H |
+| AC-5 Adversarial review | PASS | Independent rounds 1–6; D-01–D-90, all critical/high resolved (0 unresolved); 1 accepted-with-note |
 | AC-6 Unknowns | PASS | §19 U-01…U-11 + risks R-01…R-23 (full register `docs/20-design/RISK_REGISTER.md`) |
 | AC-7 Deliverables + hash | PASS | see commit hashes below |
 
 **Commit hashes (reconciled with `git log`)**:
-- Iteration 1–3 close-out: `4fbefe2` ("docs: close gauntlet gate — completion status in GAUNTLET_STATE") = `4fbefe2260eceee805e6dbb74fc43d78fbe52b9c` (superseded in content, not in history).
-- **Iteration 4–5 corrections (content, tooling, source register, bookkeeping): `8e5041c`** (full hash `8e5041ce35b3c628134bb31380aebd936faff537`) — dated 2026-10-12, immediately after the close-out below.
+- **HEAD**: `ddf4637` (merge of iteration 5 corrections; tree reflects reconciled inconsistencies)
+- Prior: `0f2802a` ("docs: finalize iteration 5 gauntlet corrections and update blueprint"), `2e981f7` (merge), merged history as shown by `git log`. `git rev-parse HEAD` is `ddf4637582cb7706fe6c9a683873bd79d3467cf6`.
 
 ## 6. Iteration history
 
@@ -88,7 +88,7 @@ Full log: `docs/90-gauntlet/DEFECTS.md` (D-01…D-90). Iteration 1 summary: 3 in
 | 2 | 2026-10-11 | Fresh re-audit + RCA + correction | 3 fresh reviewers: 6H/22M/13L items → D-41…D-57 all fixed; root cause of 2 false "FIXED" logs identified (parallel-edit collision) and process hardened |
 | 3 | 2026-10-11 | Final verification reviews + RCA + correction | 2 final reviewers: 2H/6M/2L; D-58…D-68 all fixed; deliverables completed (design docs, commit) |
 | 4 | 2026-10-12 | Reopen: primary-source verification + tooling/bookkeeping re-audit | Regulation claims verified against FIA documents; ratified 2027/2028 PU package and 2026 zone envelope added; SOURCES.md URLs added; link checker fixed and proven; D-69…D-79 fixed |
-| 5 | 2026-10-12 | Independent re-audit of corrected sections + adjacent systems | 4 LOW findings (D-80…D-83) fixed; completion gate re-run and passing |
+| 5 | 2026-10-12 | Independent re-audit of corrected sections + adjacent systems | D-80–D-89 reconciled; completion gate re-run and passing |
 
 (End of file - total 84 lines)
 
